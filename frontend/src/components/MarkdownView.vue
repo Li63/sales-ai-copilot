@@ -1,15 +1,19 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { showToast } from 'vant'
+import { copyPlainText } from '../utils/clipboard'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   content: string
-}>()
+  copyable?: boolean
+}>(), {
+  copyable: true,
+})
 
 async function copyContent() {
   if (!props.content?.trim()) return
-  await navigator.clipboard.writeText(props.content.replace(/\*\*/g, ''))
-  showToast('已复制')
+  const copied = await copyPlainText(props.content)
+  showToast(copied ? '\u5df2\u590d\u5236' : '\u590d\u5236\u5931\u8d25\uff0c\u8bf7\u957f\u6309\u6587\u5b57\u590d\u5236')
 }
 
 function escapeHtml(value: string) {
@@ -81,23 +85,28 @@ const html = computed(() => {
 
 <template>
   <div class="markdown-wrap">
-    <button v-if="content" class="copy" type="button" @click.stop="copyContent">复制</button>
+    <div v-if="copyable && content" class="markdown-actions">
+      <button class="copy" type="button" @click.stop="copyContent">{{ '\u590d\u5236' }}</button>
+    </div>
     <div class="markdown-view" v-html="html"></div>
   </div>
 </template>
 
 <style scoped>
 .markdown-wrap {
-  position: relative;
+  display: grid;
+  gap: 7px;
+}
+
+.markdown-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .copy {
-  position: absolute;
-  top: 0;
-  right: 0;
-  z-index: 1;
   min-width: 44px;
-  height: 26px;
+  min-height: 28px;
+  padding: 0 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
   color: var(--brand-strong);
@@ -107,7 +116,6 @@ const html = computed(() => {
 }
 
 .markdown-view {
-  padding-top: 2px;
   color: var(--ink);
   font-size: 13px;
   line-height: 1.72;

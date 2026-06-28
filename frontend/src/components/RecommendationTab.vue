@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { showToast } from 'vant'
 import type { Analysis, Customer, IntentReply } from '../stores/sidebar'
 import { useSidebarStore } from '../stores/sidebar'
+import { copyPlainText } from '../utils/clipboard'
 import MarkdownView from './MarkdownView.vue'
 
 defineProps<{
@@ -27,8 +28,8 @@ const intentReply = ref<IntentReply | null>(null)
 const recognizing = ref(false)
 
 async function copyText(text: string) {
-  await navigator.clipboard.writeText(text.replace(/\*\*/g, ''))
-  showToast('已复制话术')
+  const copied = await copyPlainText(text)
+  showToast(copied ? '\u5df2\u590d\u5236\u8bdd\u672f' : '\u590d\u5236\u5931\u8d25\uff0c\u8bf7\u957f\u6309\u6587\u5b57\u590d\u5236')
 }
 
 function submitTranscript() {
@@ -190,7 +191,7 @@ async function generateIntentReply() {
         @click="copyText(reply)"
       >
         <span>{{ styles[index] || '推荐' }}</span>
-        <MarkdownView :content="reply" />
+        <MarkdownView :content="reply" :copyable="false" />
         <div class="reply-reason">
           <strong>回复解析</strong>
           <p>{{ analysis?.reply_explanations?.[index] || '先接住客户当前关注点，再用一个可验证的小承诺推动下一步。' }}</p>
