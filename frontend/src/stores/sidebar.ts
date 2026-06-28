@@ -168,6 +168,7 @@ export const useSidebarStore = defineStore('sidebar', {
     tenantOverview: null as TenantOverview | null,
     tenantSales: [] as UserProfile[],
     softwareGuide: '',
+    salesTechniqueGuide: '',
     dailyIpAdvice: '',
     busyMessage: '',
     loading: false,
@@ -231,6 +232,7 @@ export const useSidebarStore = defineStore('sidebar', {
       this.tenantOverview = null
       this.tenantSales = []
       this.softwareGuide = ''
+      this.salesTechniqueGuide = ''
       this.dailyIpAdvice = ''
       this.busyMessage = ''
       localStorage.removeItem('sales_ai_token')
@@ -269,6 +271,7 @@ export const useSidebarStore = defineStore('sidebar', {
             this.loadIpContents(),
             this.loadCompanyMaterials(),
             this.loadSoftwareGuide(),
+            this.loadSalesTechniqueGuide(),
             this.loadDailyIpAdvice()
           ])
         }
@@ -468,6 +471,11 @@ export const useSidebarStore = defineStore('sidebar', {
       if (!this.token) return
       const data = await getData<{ content: string }>('/api/guide/software')
       this.softwareGuide = data.content
+    },
+    async loadSalesTechniqueGuide() {
+      if (!this.token) return
+      const data = await getData<{ content: string }>('/api/guide/sales-techniques')
+      this.salesTechniqueGuide = data.content
     },
     async extractFiles(purpose: 'chat' | 'persona' | 'company', files: FileList | File[]) {
       const formData = new FormData()

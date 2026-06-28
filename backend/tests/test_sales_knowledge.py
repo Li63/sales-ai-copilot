@@ -25,6 +25,17 @@ def test_default_sales_playbook_covers_core_channels():
     assert "先接住情绪" in playbook
 
 
+def test_sales_technique_guide_uses_shared_playbook_sections():
+    guide = SalesKnowledgeService(_db()).build_technique_guide()
+
+    assert "电销沟通技巧指南" in guide
+    assert "微信沟通技巧指南" in guide
+    assert "面销沟通技巧指南" in guide
+    assert "前 15 秒说清身份" in guide
+    assert "不发“在吗”" in guide
+    assert "开场先校准议程" in guide
+
+
 def test_refresh_global_insights_summarizes_closed_and_d_customers():
     db = _db()
     closed = Customer(

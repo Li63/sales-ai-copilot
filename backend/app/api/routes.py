@@ -1027,6 +1027,14 @@ def software_guide():
     )
 
 
+@router.get("/guide/sales-techniques")
+def sales_techniques_guide(db: Annotated[Session, Depends(get_db)], current_user: Annotated[User, Depends(get_current_user)]):
+    _ = current_user
+    service = SalesKnowledgeService(db)
+    service.refresh_if_due()
+    return success({"content": service.build_technique_guide()})
+
+
 def _product_knowledge_for_user(db: Session, user: User | None) -> str:
     base = get_settings().product_knowledge
     if user is None:

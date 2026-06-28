@@ -6,6 +6,7 @@ import MarkdownView from './MarkdownView.vue'
 
 const props = defineProps<{
   user: UserProfile | null
+  salesTechniqueGuide?: string
 }>()
 
 const emit = defineEmits<{
@@ -14,6 +15,8 @@ const emit = defineEmits<{
 
 const industry = ref(props.user?.industry || '')
 const customerGroup = ref(props.user?.customer_group || '')
+const guideOpen = ref(false)
+const techniqueOpen = ref(false)
 
 watch(
   () => props.user,
@@ -64,11 +67,29 @@ function submit() {
     </div>
 
     <article v-if="user?.sales_guide" class="guide">
-      <header>
-        <span>{{ user.industry || '行业' }}</span>
-        <strong>长期可查看</strong>
-      </header>
-      <MarkdownView :content="user.sales_guide" />
+      <button class="fold-head" type="button" @click="guideOpen = !guideOpen">
+        <span>
+          <em>{{ user.industry || '行业' }}</em>
+          <strong>我的行业销售指南</strong>
+        </span>
+        <b>{{ guideOpen ? '收起' : '展开' }}</b>
+      </button>
+      <div v-show="guideOpen" class="fold-body">
+        <MarkdownView :content="user.sales_guide" />
+      </div>
+    </article>
+
+    <article v-if="user?.sales_guide" class="guide technique">
+      <button class="fold-head" type="button" @click="techniqueOpen = !techniqueOpen">
+        <span>
+          <em>跟随内置技巧库更新</em>
+          <strong>电销 / 面销 / 微信沟通技巧指南</strong>
+        </span>
+        <b>{{ techniqueOpen ? '收起' : '展开' }}</b>
+      </button>
+      <div v-show="techniqueOpen" class="fold-body">
+        <MarkdownView :content="salesTechniqueGuide || '技巧指南加载中...'" />
+      </div>
     </article>
   </section>
 </template>
@@ -158,15 +179,56 @@ button {
     linear-gradient(180deg, var(--brand-soft), white 92px);
 }
 
-.guide header {
+.fold-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 10px;
+  width: 100%;
+  gap: 12px;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  text-align: left;
 }
 
-.guide header strong {
+.fold-head span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.fold-head em {
   color: var(--muted);
   font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.fold-head strong {
+  color: var(--ink);
+  font-size: 15px;
+}
+
+.fold-head b {
+  flex: 0 0 auto;
+  min-width: 44px;
+  padding: 6px 9px;
+  border-radius: 8px;
+  color: var(--brand-strong);
+  background: var(--surface);
+  font-size: 12px;
+  text-align: center;
+}
+
+.fold-body {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid oklch(0.86 0.035 175);
+}
+
+.technique {
+  background:
+    linear-gradient(180deg, var(--accent-soft), white 92px);
 }
 </style>

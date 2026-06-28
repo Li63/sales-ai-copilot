@@ -43,6 +43,7 @@ async function refresh() {
     await store.loadCustomers()
     await store.loadFollowOverview()
     await store.loadDailyIpAdvice()
+    await store.loadSalesTechniqueGuide()
     await store.loadFeedback()
     await store.loadPersonaSources()
   }, undefined, 'AI 正在刷新客户分析、跟进建议和今日 IP 建议，请稍等...')
@@ -160,7 +161,7 @@ onMounted(() => {
           <strong>先生成你的专属销售打法</strong>
           <p>填入行业和客户群体后，AI 会先建立行业销售指南，再开始分析聊天记录。</p>
         </div>
-        <GuidePanel :user="store.user" @save="saveGuide" />
+        <GuidePanel :sales-technique-guide="store.salesTechniqueGuide" :user="store.user" @save="saveGuide" />
       </section>
 
       <PlatformAdminPanel
@@ -229,7 +230,7 @@ onMounted(() => {
 
           <div v-else class="mine">
             <CompanyMaterialPanel :materials="store.companyMaterials" @add="addCompanyMaterial" />
-            <GuidePanel :user="store.user" @save="saveGuide" />
+            <GuidePanel :sales-technique-guide="store.salesTechniqueGuide" :user="store.user" @save="saveGuide" />
             <SoftwareGuidePanel :content="store.softwareGuide" />
           </div>
         </PullRefresh>

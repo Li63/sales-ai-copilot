@@ -57,6 +57,15 @@ class SalesKnowledgeService:
             blocks.append(f"\n## {item.title}\n{item.content}")
         return "\n".join(blocks)
 
+    def build_technique_guide(self) -> str:
+        return (
+            self.build_context()
+            .replace("# 共享销售技巧库", "# 销售沟通技巧指南")
+            .replace("## 电话沟通", "## 电销沟通技巧指南")
+            .replace("## 微信沟通", "## 微信沟通技巧指南")
+            .replace("## 面谈沟通", "## 面销沟通技巧指南")
+        )
+
     def refresh_if_due(self, now: datetime | None = None, force: bool = False) -> int:
         now = now or datetime.utcnow()
         state = self.db.scalar(select(SyncState).where(SyncState.sync_key == REFRESH_KEY))
