@@ -1,9 +1,14 @@
+import asyncio
 import json
 from collections.abc import Awaitable, Callable
 from datetime import date
 from typing import Any
 
 import httpx
+
+
+TEXT_MODEL_TIMEOUT_SECONDS = 12
+VISION_MODEL_TIMEOUT_SECONDS = 25
 
 
 SYSTEM_PROMPT = """你是这个行业里真正跑过一线、拿过结果的销冠型销售教练。你的任务不是写“AI 标准答案”，而是帮销售说出客户愿意听、听完愿意继续聊的话。
@@ -114,7 +119,7 @@ class LLMService:
             temperature=0.35,
         )
         try:
-            response = await self.http_client(payload)
+            response = await self._call_text_model(payload)
             return str(response["choices"][0]["message"]["content"]).strip()
         except Exception:
             return self.fallback_guide(industry, customer_group)
@@ -144,7 +149,7 @@ class LLMService:
             temperature=0.3,
         )
         try:
-            response = await self.http_client(payload)
+            response = await self._call_text_model(payload)
             content = response["choices"][0]["message"]["content"]
             parsed = json.loads(content)
             return self._normalize(parsed)
@@ -177,7 +182,7 @@ class LLMService:
             temperature=0.42,
         )
         try:
-            response = await self.http_client(payload)
+            response = await self._call_text_model(payload)
             parsed = json.loads(response["choices"][0]["message"]["content"])
             return {
                 "reply_suggestion": str(parsed.get("reply_suggestion", ""))[:220],
@@ -207,7 +212,7 @@ class LLMService:
             temperature=0.45,
         )
         try:
-            response = await self.http_client(payload)
+            response = await self._call_text_model(payload)
             return str(response["choices"][0]["message"]["content"]).strip()
         except Exception:
             return self.fallback_ip_content(industry, customer_group, theme, channel)
@@ -226,7 +231,7 @@ class LLMService:
             temperature=0.4,
         )
         try:
-            response = await self.http_client(payload)
+            response = await self._call_text_model(payload)
             return str(response["choices"][0]["message"]["content"]).strip()
         except Exception:
             return self.fallback_daily_ip_advice(industry, customer_group, today)
@@ -249,7 +254,7 @@ class LLMService:
             "temperature": 0.1,
         }
         try:
-            response = await self.vision_http_client(payload)
+            response = await asyncio.wait_for(self.vision_http_client(payload), timeout=VISION_MODEL_TIMEOUT_SECONDS)
             return str(response["choices"][0]["message"]["content"]).strip()
         except Exception:
             filenames = "、".join(image.get("filename", "图片") for image in images)
@@ -265,10 +270,13 @@ class LLMService:
             "temperature": temperature,
         }
 
+    async def _call_text_model(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return await asyncio.wait_for(self.http_client(payload), timeout=TEXT_MODEL_TIMEOUT_SECONDS)
+
     async def _post_chat_completion(self, payload: dict[str, Any]) -> dict[str, Any]:
         if not self.api_key or not self.base_url:
             raise RuntimeError("LLM_API_KEY and LLM_BASE_URL are required")
-        async with httpx.AsyncClient(timeout=30) as client:
+        async with httpx.AsyncClient(timeout=TEXT_MODEL_TIMEOUT_SECONDS) as client:
             response = await client.post(
                 f"{self.base_url}/chat/completions",
                 headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
@@ -280,7 +288,7 @@ class LLMService:
     async def _post_vision_completion(self, payload: dict[str, Any]) -> dict[str, Any]:
         if not self.vision_api_key or not self.vision_base_url:
             raise RuntimeError("VISION_API_KEY/VISION_BASE_URL or LLM_API_KEY/LLM_BASE_URL are required")
-        async with httpx.AsyncClient(timeout=60) as client:
+        async with httpx.AsyncClient(timeout=VISION_MODEL_TIMEOUT_SECONDS) as client:
             response = await client.post(
                 f"{self.vision_base_url}/chat/completions",
                 headers={"Authorization": f"Bearer {self.vision_api_key}", "Content-Type": "application/json"},
