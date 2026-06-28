@@ -19,6 +19,7 @@ const levelClass = (level?: string) => `level level-${level || 'C'}`
       <div class="identity">
         <div class="name-row">
           <strong>{{ customer?.nickname || '当前客户' }}</strong>
+          <span v-if="customer?.lifecycle_status === 'closed'" class="closed-badge">已成交</span>
           <span :class="levelClass(customer?.category || customer?.intention_level)">
             {{ customer?.category || customer?.intention_level || 'C' }}
           </span>
@@ -122,6 +123,16 @@ const levelClass = (level?: string) => `level level-${level || 'C'}`
   padding: 3px 7px;
   border-radius: 6px;
   text-align: center;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.closed-badge {
+  flex: 0 0 auto;
+  padding: 3px 7px;
+  border-radius: 6px;
+  color: oklch(0.38 0.1 150);
+  background: oklch(0.94 0.055 150);
   font-size: 12px;
   font-weight: 900;
 }

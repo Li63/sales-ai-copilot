@@ -15,6 +15,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   addFeedback: [payload: { ai_reply: string; customer_reply: string; sales_review: string; outcome: 'good' | 'bad' | 'neutral'; original_customer_question?: string }]
   addPersona: [payload: { title: string; content: string; source_type: string }]
+  updateStatus: [status: 'active' | 'closed']
 }>()
 
 const store = useSidebarStore()
@@ -88,6 +89,27 @@ async function appendPersonaImages(files: FileList | null) {
         <span>{{ customer?.category || customer?.intention_level || 'C' }} 类</span>
       </div>
     </div>
+
+    <article class="panel status-panel">
+      <div>
+        <strong>{{ customer?.lifecycle_status === 'closed' ? '客户已成交' : '成交状态' }}</strong>
+        <p>
+          {{
+            customer?.lifecycle_status === 'closed'
+              ? `系统会重点学习这个客户的成交节奏、客户全景和有效话术，用来优化后续建议。${customer?.closed_at ? `成交时间：${customer.closed_at.slice(0, 10)}` : ''}`
+              : '确认成交后请标记为已成交，系统会把它作为高价值成功样本持续沉淀。'
+          }}
+        </p>
+      </div>
+      <button
+        type="button"
+        :class="{ secondary: customer?.lifecycle_status === 'closed' }"
+        :disabled="!customer"
+        @click="emit('updateStatus', customer?.lifecycle_status === 'closed' ? 'active' : 'closed')"
+      >
+        {{ customer?.lifecycle_status === 'closed' ? '恢复跟进' : '标记已成交' }}
+      </button>
+    </article>
 
     <div class="insight-grid">
       <article>
@@ -359,6 +381,45 @@ textarea {
   font-weight: 900;
 }
 
+.status-panel {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+}
+
+.status-panel strong {
+  display: block;
+  color: var(--ink);
+  font-size: 15px;
+}
+
+.status-panel p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.status-panel button {
+  min-width: 96px;
+  min-height: 36px;
+  border: 0;
+  border-radius: 8px;
+  color: white;
+  background: var(--brand);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.status-panel button:disabled {
+  opacity: 0.5;
+}
+
+.status-panel .secondary {
+  color: var(--brand-strong);
+  border: 1px solid oklch(0.78 0.055 175);
+  background: var(--brand-soft);
+}
+
 .outcome {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -433,6 +494,10 @@ textarea {
   }
 
   .insight-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .status-panel {
     grid-template-columns: 1fr;
   }
 }

@@ -102,7 +102,7 @@ async function generateIntentReply() {
       <select :value="customer?.external_userid || ''" @change="selectCustomer">
         <option value="">选择已有客户</option>
         <option v-for="item in customers" :key="item.external_userid" :value="item.external_userid">
-          {{ item.nickname }} · {{ item.category || item.intention_level }} · {{ item.intention_score }}分
+          {{ item.nickname }} · {{ item.lifecycle_status === 'closed' ? '已成交' : item.category || item.intention_level }} · {{ item.intention_score }}分
         </option>
       </select>
 

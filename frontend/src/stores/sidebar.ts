@@ -30,6 +30,8 @@ export interface Customer {
   objection?: string
   persona_profile?: string
   persona_updated_at?: string
+  lifecycle_status: 'active' | 'closed'
+  closed_at?: string
   tags: CustomerTag[]
   recent_follow_records?: FollowRecord[]
 }
@@ -173,8 +175,12 @@ export const useSidebarStore = defineStore('sidebar', {
   }),
   getters: {
     customersByCategory: (state) => {
-      const groups: Record<string, Customer[]> = { S: [], A: [], B: [], C: [], D: [] }
+      const groups: Record<string, Customer[]> = { CLOSED: [], S: [], A: [], B: [], C: [], D: [] }
       for (const customer of state.customers) {
+        if (customer.lifecycle_status === 'closed') {
+          groups.CLOSED.push(customer)
+          continue
+        }
         const category = customer.category || customer.intention_level || 'C'
         if (!groups[category]) groups[category] = []
         groups[category].push(customer)
@@ -288,6 +294,14 @@ export const useSidebarStore = defineStore('sidebar', {
         this.loadFeedback(),
         this.loadPersonaSources()
       ])
+    },
+    async updateCustomerStatus(status: 'active' | 'closed') {
+      if (!this.externalUserId) return
+      const customer = await postData<Customer>(`/api/customer/status?external_userid=${encodeURIComponent(this.externalUserId)}`, {
+        lifecycle_status: status
+      })
+      this.customer = customer
+      await Promise.all([this.loadCustomers(), this.loadAnalysis(), this.loadFollowOverview()])
     },
     async selectCustomer(externalUserId: string) {
       this.externalUserId = externalUserId

@@ -7,13 +7,17 @@ const props = defineProps<{
   overview: FollowOverview | null
 }>()
 
-const levels = ['S', 'A', 'B', 'C', 'D'] as const
-const levelText = { S: '高意向', A: '重点推进', B: '持续培育', C: '弱意向', D: '沉睡' }
+const levels = ['CLOSED', 'S', 'A', 'B', 'C', 'D'] as const
+const levelText = { CLOSED: '已成交', S: '高意向', A: '重点推进', B: '持续培育', C: '弱意向', D: '沉睡' }
 
 const total = computed(() => props.customers.length)
 const levelCounts = computed(() => {
-  const counts: Record<string, number> = { S: 0, A: 0, B: 0, C: 0, D: 0 }
+  const counts: Record<string, number> = { CLOSED: 0, S: 0, A: 0, B: 0, C: 0, D: 0 }
   for (const customer of props.customers) {
+    if (customer.lifecycle_status === 'closed') {
+      counts.CLOSED += 1
+      continue
+    }
     const level = customer.category || customer.intention_level || 'C'
     counts[level] = (counts[level] || 0) + 1
   }
@@ -32,6 +36,7 @@ const followRate = computed(() => {
 })
 const hotCustomers = computed(() =>
   [...props.customers]
+    .filter((customer) => customer.lifecycle_status !== 'closed')
     .sort((a, b) => (b.intention_score || 0) - (a.intention_score || 0))
     .slice(0, 5)
 )
@@ -68,7 +73,7 @@ function percent(count: number) {
     <article class="panel">
       <div class="panel-title">
         <strong>客户分层</strong>
-        <span>S/A 越多，近期成交机会越集中</span>
+        <span>成交看沉淀，S/A 看近期机会，D 类看避坑复盘</span>
       </div>
       <div class="bar-list">
         <div v-for="level in levels" :key="level" class="bar-row">

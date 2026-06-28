@@ -11,10 +11,11 @@ const emit = defineEmits<{
 }>()
 
 const query = ref('')
-const expanded = reactive<Record<string, boolean>>({ S: true, A: true, B: false, C: false, D: false })
+const expanded = reactive<Record<string, boolean>>({ CLOSED: true, S: true, A: true, B: false, C: false, D: false })
 
-const levels = ['S', 'A', 'B', 'C', 'D'] as const
+const levels = ['CLOSED', 'S', 'A', 'B', 'C', 'D'] as const
 const levelMeta = {
+  CLOSED: { title: '已成交客户', desc: '重点沉淀成交节奏和有效话术', tone: 'success' },
   S: { title: 'S 类客户', desc: '强意向，优先推进成交', tone: 'hot' },
   A: { title: 'A 类客户', desc: '中高意向，持续跟进', tone: 'warm' },
   B: { title: 'B 类客户', desc: '有兴趣但节奏不急', tone: 'steady' },
@@ -86,9 +87,12 @@ function toggle(level: string) {
         >
           <div class="customer-main">
             <strong>{{ customer.nickname }}</strong>
-            <span>{{ customer.intention_score }}分</span>
+            <span>{{ customer.lifecycle_status === 'closed' ? '已成交' : `${customer.intention_score}分` }}</span>
           </div>
           <p>{{ customer.core_demand || '暂无核心诉求' }}</p>
+          <div v-if="customer.lifecycle_status === 'closed'" class="closed-note">
+            成交时间：{{ customer.closed_at ? customer.closed_at.slice(0, 10) : '已记录' }}
+          </div>
           <div class="customer-tags">
             <span v-for="tag in customer.tags.slice(0, 3)" :key="`${customer.id}-${tag.tag_name}`">{{ tag.tag_name }}</span>
             <em v-if="!customer.tags.length">暂无标签</em>
@@ -277,6 +281,16 @@ function toggle(level: string) {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+.closed-note {
+  width: fit-content;
+  padding: 5px 8px;
+  border-radius: 8px;
+  color: oklch(0.38 0.1 150);
+  background: oklch(0.94 0.055 150);
+  font-size: 12px;
+  font-weight: 900;
 }
 
 .customer-tags span {

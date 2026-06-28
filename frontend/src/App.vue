@@ -105,6 +105,16 @@ async function createCustomer(nickname: string) {
   }, '客户已创建', '正在创建客户并初始化分析工作台...')
 }
 
+async function updateCustomerStatus(status: 'active' | 'closed') {
+  await runAction(
+    () => store.updateCustomerStatus(status),
+    status === 'closed' ? '已标记成交' : '已恢复跟进',
+    status === 'closed'
+      ? '正在沉淀成交客户经验，后续话术会重点参考这类成功样本...'
+      : '正在恢复客户跟进状态...'
+  )
+}
+
 async function login(username: string, password: string) {
   await runAction(async () => {
     await store.login(username, password)
@@ -199,6 +209,7 @@ onMounted(() => {
             :persona-sources="store.personaSources"
             @add-feedback="addFeedback"
             @add-persona="addPersona"
+            @update-status="updateCustomerStatus"
           />
 
           <FollowTab v-else-if="active === 3" :records="store.followRecords" @add="addFollow" />

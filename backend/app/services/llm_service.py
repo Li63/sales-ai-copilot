@@ -133,6 +133,7 @@ class LLMService:
         memory_summary: str = "",
         feedback_lessons: list[dict[str, Any]] | None = None,
         persona_sources: list[dict[str, Any]] | None = None,
+        sales_playbook: str = "",
     ) -> dict[str, Any]:
         payload = self._payload(
             SYSTEM_PROMPT,
@@ -144,6 +145,7 @@ class LLMService:
                 "memory_summary": memory_summary,
                 "global_feedback_lessons": feedback_lessons or [],
                 "customer_persona_sources": persona_sources or [],
+                "shared_sales_playbook": sales_playbook,
                 "analysis_angle": "同时站在该行业顶尖销售和客户视角，给出更像真人销冠的跟进节奏、回复逻辑与下一步动作。先接情绪，再拆判断标准，最后轻推进。",
             },
             temperature=0.3,
@@ -166,6 +168,7 @@ class LLMService:
         memory_summary: str = "",
         feedback_lessons: list[dict[str, Any]] | None = None,
         persona_sources: list[dict[str, Any]] | None = None,
+        sales_playbook: str = "",
     ) -> dict[str, str]:
         payload = self._payload(
             INTENT_REPLY_PROMPT,
@@ -178,6 +181,7 @@ class LLMService:
                 "memory_summary": memory_summary,
                 "global_feedback_lessons": feedback_lessons or [],
                 "customer_persona_sources": persona_sources or [],
+                "shared_sales_playbook": sales_playbook,
             },
             temperature=0.42,
         )

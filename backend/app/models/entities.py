@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -77,6 +77,8 @@ class Customer(Base):
     objection: Mapped[str | None] = mapped_column(String(128))
     persona_profile: Mapped[str | None] = mapped_column(Text)
     persona_updated_at: Mapped[datetime | None] = mapped_column(DateTime)
+    lifecycle_status: Mapped[str] = mapped_column(String(16), nullable=False, default="active")
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime)
 
     tags: Mapped[list["CustomerTag"]] = relationship(back_populates="customer", cascade="all, delete-orphan")
 
@@ -116,6 +118,18 @@ class ReplyFeedback(Base):
     customer_feedback: Mapped[str] = mapped_column(Text, nullable=False)
     outcome: Mapped[str] = mapped_column(String(16), nullable=False, default="neutral")
     lesson: Mapped[str | None] = mapped_column(Text)
+
+
+class GlobalSalesInsight(Base):
+    __tablename__ = "global_sales_insights"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    insight_type: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    source_window_start: Mapped[datetime | None] = mapped_column(DateTime)
+    source_window_end: Mapped[datetime | None] = mapped_column(DateTime)
+    title: Mapped[str] = mapped_column(String(128), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    sample_count: Mapped[int] = mapped_column(default=0)
 
 
 class PersonaSource(Base):
@@ -172,6 +186,6 @@ class AnalysisLog(Base):
 class SyncState(Base):
     __tablename__ = "sync_states"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     sync_key: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     sync_value: Mapped[str] = mapped_column(String(255), nullable=False)

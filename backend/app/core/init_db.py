@@ -9,6 +9,7 @@ from app.models import (
     Customer,
     CustomerTag,
     FollowRecord,
+    GlobalSalesInsight,
     IpContentRecord,
     PersonaSource,
     ReplyFeedback,
@@ -28,6 +29,7 @@ def init_db() -> None:
         Customer,
         CustomerTag,
         FollowRecord,
+        GlobalSalesInsight,
         IpContentRecord,
         PersonaSource,
         ReplyFeedback,
@@ -39,6 +41,7 @@ def init_db() -> None:
     _ensure_tenant_columns()
     _ensure_company_material_columns()
     _ensure_customer_persona_columns()
+    _ensure_customer_lifecycle_columns()
     _seed_default_tenant_and_admin()
 
 
@@ -50,6 +53,21 @@ def _ensure_customer_persona_columns() -> None:
         statements.append("ALTER TABLE customers ADD COLUMN persona_profile TEXT")
     if "persona_updated_at" not in columns:
         statements.append("ALTER TABLE customers ADD COLUMN persona_updated_at DATETIME")
+    if not statements:
+        return
+    with engine.begin() as connection:
+        for statement in statements:
+            connection.execute(text(statement))
+
+
+def _ensure_customer_lifecycle_columns() -> None:
+    inspector = inspect(engine)
+    columns = {column["name"] for column in inspector.get_columns("customers")}
+    statements: list[str] = []
+    if "lifecycle_status" not in columns:
+        statements.append("ALTER TABLE customers ADD COLUMN lifecycle_status VARCHAR(16) NOT NULL DEFAULT 'active'")
+    if "closed_at" not in columns:
+        statements.append("ALTER TABLE customers ADD COLUMN closed_at DATETIME NULL")
     if not statements:
         return
     with engine.begin() as connection:

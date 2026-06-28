@@ -29,6 +29,7 @@ from app.models import (
 from app.services.auth_service import AuthService
 from app.services.customer_service import CustomerService
 from app.services.llm_service import LLMService
+from app.services.sales_knowledge import SalesKnowledgeService
 from app.services.transcript_parser import parse_transcript
 from app.services.wecom_client import WeComClient, now_timestamp
 
@@ -60,6 +61,10 @@ class GuideRequest(BaseModel):
 
 class CustomerCreateRequest(BaseModel):
     nickname: str
+
+
+class CustomerStatusRequest(BaseModel):
+    lifecycle_status: str = "active"
 
 
 class ChatImportRequest(BaseModel):
@@ -507,6 +512,25 @@ def customer_create(
     return success(_customer_payload(customer, db))
 
 
+@router.post("/customer/status")
+def customer_status(
+    body: CustomerStatusRequest,
+    external_userid: str,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    customer = CustomerService(db).get_or_create_customer(current_user.sales_userid, external_userid)
+    status = body.lifecycle_status if body.lifecycle_status in {"active", "closed"} else "active"
+    customer.lifecycle_status = status
+    customer.closed_at = datetime.utcnow() if status == "closed" and customer.closed_at is None else customer.closed_at
+    if status == "active":
+        customer.closed_at = None
+    db.commit()
+    SalesKnowledgeService(db).refresh_if_due(force=status == "closed")
+    db.refresh(customer)
+    return success(_customer_payload(customer, db))
+
+
 @router.get("/analysis/realtime")
 async def realtime_analysis(
     sales_userid: str,
@@ -528,6 +552,7 @@ async def realtime_analysis(
         memory_summary=current_user.memory_summary if current_user else "",
         feedback_lessons=_global_feedback_lessons(db),
         persona_sources=_persona_sources(db, active_sales_userid, external_userid),
+        sales_playbook=_sales_playbook_context(db),
     )
     customer.core_demand = analysis["core_demand"]
     customer.objection = analysis["objection"]
@@ -570,6 +595,7 @@ async def intent_reply(
         memory_summary=current_user.memory_summary if current_user else "",
         feedback_lessons=_global_feedback_lessons(db),
         persona_sources=_persona_sources(db, active_sales_userid, body.external_userid),
+        sales_playbook=_sales_playbook_context(db),
     )
     return success(result)
 
@@ -774,6 +800,7 @@ def feedback_add(
     )
     db.add(record)
     db.commit()
+    SalesKnowledgeService(db).refresh_if_due()
     db.refresh(record)
     return success(_feedback_payload(record))
 
@@ -1122,6 +1149,8 @@ def _customer_payload(customer: Customer, db: Session | None = None) -> dict:
         "objection": customer.objection or "",
         "persona_profile": customer.persona_profile or "",
         "persona_updated_at": customer.persona_updated_at.isoformat() if customer.persona_updated_at else "",
+        "lifecycle_status": customer.lifecycle_status or "active",
+        "closed_at": customer.closed_at.isoformat() if customer.closed_at else "",
         "tags": [
             {
                 "tag_name": tag.tag_name,
@@ -1202,6 +1231,12 @@ def _global_feedback_lessons(db: Session) -> list[dict]:
         {"outcome": item.outcome, "lesson": item.lesson or "", "feedback_summary": item.customer_feedback[:260]}
         for item in records
     ]
+
+
+def _sales_playbook_context(db: Session) -> str:
+    service = SalesKnowledgeService(db)
+    service.refresh_if_due()
+    return service.build_context()
 
 
 def _feedback_payload(item: ReplyFeedback) -> dict:
