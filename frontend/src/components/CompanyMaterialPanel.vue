@@ -18,15 +18,15 @@ const mode = ref<'full_replace' | 'delta_update'>('full_replace')
 const store = useSidebarStore()
 const recognizing = ref(false)
 
-async function appendImageNotes(files: FileList | null) {
+async function appendFileNotes(files: FileList | null) {
   if (!files?.length) return
   recognizing.value = true
   try {
-    const text = await store.extractImages('company', files)
+    const text = await store.extractFiles('company', files)
     content.value = [content.value.trim(), text.trim()].filter(Boolean).join('\n\n')
-    showToast(`已连续识别 ${files.length} 张公司资料图`)
+    showToast(`已解析 ${files.length} 个公司资料文件`)
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '图片识别失败')
+    showToast(error instanceof Error ? error.message : '文件解析失败')
   } finally {
     recognizing.value = false
   }
@@ -35,8 +35,8 @@ async function appendImageNotes(files: FileList | null) {
 async function importTextFile(files: FileList | null) {
   const file = files?.[0]
   if (!file) return
-  if (file.type.startsWith('image/')) {
-    await appendImageNotes(files)
+  if (file.type.startsWith('image/') || ['.pdf', '.doc', '.docx'].some((suffix) => file.name.toLowerCase().endsWith(suffix))) {
+    await appendFileNotes(files)
     return
   }
   const text = await file.text()
@@ -90,16 +90,16 @@ function submit() {
 
     <div class="upload-row">
       <label>
-        上传文件
-        <input accept=".txt,.md,.csv,.json,image/*" type="file" @change="importTextFile(($event.target as HTMLInputElement).files)" />
+        上传 Word/PDF/图片
+        <input accept=".doc,.docx,.pdf,image/*,.txt,.md,.csv,.json" multiple type="file" @change="importTextFile(($event.target as HTMLInputElement).files)" />
       </label>
       <label>
-        多选图片
-        <input accept="image/*" multiple type="file" @change="appendImageNotes(($event.target as HTMLInputElement).files)" />
+        连续解析资料
+        <input accept=".doc,.docx,.pdf,image/*" multiple type="file" @change="appendFileNotes(($event.target as HTMLInputElement).files)" />
       </label>
       <button type="button" @click="submit">保存资料</button>
     </div>
-    <p v-if="recognizing" class="status">正在识别图片，请稍等...</p>
+    <p v-if="recognizing" class="status">正在解析文件，请稍等...</p>
 
     <div class="material-list">
       <article v-for="item in materials" :key="item.id">

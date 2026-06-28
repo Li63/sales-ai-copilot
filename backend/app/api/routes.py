@@ -1,7 +1,10 @@
 import base64
 import hashlib
+import io
+import zipfile
 from datetime import datetime, timedelta
 from typing import Annotated
+from xml.etree import ElementTree
 
 from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, UploadFile
 from pydantic import BaseModel
@@ -104,6 +107,12 @@ class CompanyMaterialRequest(BaseModel):
     scope: str = "sales"
 
 
+class IntentReplyRequest(BaseModel):
+    sales_userid: str
+    external_userid: str
+    intent: str
+
+
 class TenantCreateRequest(BaseModel):
     name: str
     contact_name: str | None = None
@@ -123,7 +132,10 @@ class ApprovalRequest(BaseModel):
 
 
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
+MAX_FILE_BYTES = 12 * 1024 * 1024
 SUPPORTED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+SUPPORTED_TEXT_TYPES = {"text/plain", "text/markdown", "text/csv", "application/json"}
+SUPPORTED_DOCUMENT_SUFFIXES = {".pdf", ".docx", ".doc"}
 
 
 def _optional_current_user(
@@ -529,6 +541,33 @@ async def summary():
     )
 
 
+@router.post("/analysis/intent-reply")
+async def intent_reply(
+    body: IntentReplyRequest,
+    db: Annotated[Session, Depends(get_db)],
+    llm: Annotated[LLMService, Depends(get_llm_service)],
+    current_user: Annotated[User | None, Depends(_optional_current_user)] = None,
+):
+    intent = body.intent.strip()[:500]
+    if not intent:
+        return {"code": 1, "message": "请填写你想对客户表达的意思", "data": {}}
+    active_sales_userid = current_user.sales_userid if current_user else body.sales_userid
+    customer = CustomerService(db).get_or_create_customer(active_sales_userid, body.external_userid)
+    messages = _load_conversation(db, active_sales_userid, body.external_userid, limit=20)
+    history = [{"content": item.content, "from_user": item.from_user, "msg_time": item.msg_time.isoformat()} for item in messages]
+    result = await llm.generate_intent_reply(
+        intent=intent,
+        customer_profile=_customer_payload(customer, db),
+        chat_history=history,
+        product_knowledge=_product_knowledge_for_user(db, current_user) if current_user else get_settings().product_knowledge,
+        sales_guide=current_user.sales_guide if current_user else "",
+        memory_summary=current_user.memory_summary if current_user else "",
+        feedback_lessons=_global_feedback_lessons(db),
+        persona_sources=_persona_sources(db, active_sales_userid, body.external_userid),
+    )
+    return success(result)
+
+
 @router.post("/chat/import")
 def import_chat(
     body: ChatImportRequest,
@@ -595,6 +634,48 @@ async def vision_extract(
         )
     text = await llm.analyze_images(images, purpose=purpose)
     return success({"text": text, "count": len(images), "purpose": purpose})
+
+
+@router.post("/file/extract")
+async def file_extract(
+    llm: Annotated[LLMService, Depends(get_llm_service)],
+    current_user: Annotated[User, Depends(get_current_user)],
+    purpose: Annotated[str, Form()] = "company",
+    files: Annotated[list[UploadFile] | None, File()] = None,
+):
+    _ = current_user
+    if not files:
+        return {"code": 1, "message": "请上传 Word、PDF 或图片", "data": {}}
+    text_blocks: list[str] = []
+    images: list[dict[str, str]] = []
+    for file in files[:8]:
+        content = await file.read()
+        if len(content) > MAX_FILE_BYTES:
+            return {"code": 1, "message": f"{file.filename or '文件'} 不能超过 12MB", "data": {}}
+        content_type = file.content_type or "application/octet-stream"
+        filename = file.filename or "file"
+        suffix = _file_suffix(filename)
+        if content_type in SUPPORTED_IMAGE_TYPES:
+            if len(content) > MAX_IMAGE_BYTES:
+                return {"code": 1, "message": "单张图片不能超过 5MB", "data": {}}
+            images.append({"filename": filename, "content_type": content_type, "base64": base64.b64encode(content).decode("ascii")})
+            continue
+        if suffix == ".pdf":
+            text_blocks.append(_extract_pdf_text(content, filename))
+            continue
+        if suffix == ".docx":
+            text_blocks.append(_extract_docx_text(content, filename))
+            continue
+        if suffix == ".doc":
+            return {"code": 1, "message": "暂不支持旧版 .doc，请另存为 .docx 或 PDF 后上传", "data": {}}
+        if content_type in SUPPORTED_TEXT_TYPES or suffix in {".txt", ".md", ".csv", ".json"}:
+            text_blocks.append(f"# {filename}\n{_decode_text(content)}")
+            continue
+        return {"code": 1, "message": f"不支持的文件类型：{filename}", "data": {}}
+    if images:
+        text_blocks.append(await llm.analyze_images(images, purpose=purpose))
+    text = "\n\n".join(block.strip() for block in text_blocks if block.strip())
+    return success({"text": text, "count": len(files), "purpose": purpose})
 
 
 @router.get("/follow/list")
@@ -916,6 +997,55 @@ def _product_knowledge_for_user(db: Session, user: User | None) -> str:
         label = "最新完整资料" if item.source_type in {"full_replace", "manual"} else "后续变更记录"
         blocks.append(f"\n## {label}：{item.title}\n{item.content[:1500]}")
     return "\n".join(blocks)
+
+
+def _file_suffix(filename: str) -> str:
+    name = (filename or "").lower()
+    if "." not in name:
+        return ""
+    return "." + name.rsplit(".", 1)[-1]
+
+
+def _decode_text(content: bytes) -> str:
+    for encoding in ("utf-8", "utf-8-sig", "gb18030"):
+        try:
+            return content.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    return content.decode("utf-8", errors="ignore")
+
+
+def _extract_pdf_text(content: bytes, filename: str) -> str:
+    try:
+        from pypdf import PdfReader
+
+        reader = PdfReader(io.BytesIO(content))
+        pages = []
+        for index, page in enumerate(reader.pages[:80], start=1):
+            text = (page.extract_text() or "").strip()
+            if text:
+                pages.append(f"## 第 {index} 页\n{text}")
+        if pages:
+            return f"# {filename}\n" + "\n\n".join(pages)
+        return f"# {filename}\nPDF 已上传，但未提取到可用文字。若是扫描件，请转为图片上传或使用清晰截图。"
+    except Exception:
+        return f"# {filename}\nPDF 已上传，但当前环境未能解析内容。请复制关键文字，或将 PDF 页面截图后上传。"
+
+
+def _extract_docx_text(content: bytes, filename: str) -> str:
+    try:
+        with zipfile.ZipFile(io.BytesIO(content)) as archive:
+            xml_content = archive.read("word/document.xml")
+        root = ElementTree.fromstring(xml_content)
+        namespace = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
+        paragraphs = []
+        for paragraph in root.findall(".//w:p", namespace):
+            text = "".join(node.text or "" for node in paragraph.findall(".//w:t", namespace)).strip()
+            if text:
+                paragraphs.append(text)
+        return f"# {filename}\n" + "\n".join(paragraphs[:1200])
+    except Exception:
+        return f"# {filename}\nWord 文件已上传，但未能解析内容。请确认文件未损坏，或另存为 PDF 后重新上传。"
 
 
 def _load_conversation(db: Session, sales_userid: str, external_userid: str, limit: int) -> list[ChatMessage]:

@@ -11,6 +11,7 @@ defineProps<{
 
 const emit = defineEmits<{
   generateIp: [theme: string, channel: 'moments' | 'douyin']
+  refreshDailyIp: []
 }>()
 
 const ipTheme = ref('')
@@ -37,7 +38,7 @@ function submitIp() {
     <article v-if="dailyIpAdvice" class="panel daily">
       <div class="panel-head">
         <strong>今日 IP 建议</strong>
-        <span>登录自动生成</span>
+        <button type="button" @click="emit('refreshDailyIp')">刷新建议</button>
       </div>
       <MarkdownView :content="dailyIpAdvice" />
     </article>
@@ -67,7 +68,10 @@ function submitIp() {
             <span>{{ item.channel === 'douyin' ? '抖音短视频' : '朋友圈' }}</span>
             <strong>{{ item.theme }}</strong>
           </div>
-          <time>{{ item.created_at.slice(0, 10) }}</time>
+          <div class="card-actions">
+            <time>{{ item.created_at.slice(0, 10) }}</time>
+            <button type="button" @click="emit('generateIp', item.theme, item.channel === 'douyin' ? 'douyin' : 'moments')">再来一版</button>
+          </div>
         </header>
         <MarkdownView :content="item.content" />
       </article>
@@ -148,6 +152,28 @@ function submitIp() {
   color: var(--subtle);
   font-size: 12px;
   font-weight: 800;
+}
+
+.panel-head button,
+.card-actions button {
+  min-height: 30px;
+  border: 0;
+  border-radius: 8px;
+  color: white;
+  background: var(--brand);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.card-actions {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+  min-width: 82px;
+}
+
+.card-actions button {
+  padding: 0 9px;
 }
 
 .channel-switch {

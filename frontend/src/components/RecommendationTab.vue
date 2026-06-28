@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { showToast } from 'vant'
-import type { Analysis, Customer } from '../stores/sidebar'
+import type { Analysis, Customer, IntentReply } from '../stores/sidebar'
 import { useSidebarStore } from '../stores/sidebar'
 import MarkdownView from './MarkdownView.vue'
 
@@ -15,12 +15,15 @@ const emit = defineEmits<{
   import: [transcript: string]
   selectCustomer: [externalUserId: string]
   createCustomer: [nickname: string]
+  refreshAnalysis: []
 }>()
 
 const styles = ['专业正式', '亲和拉近', '引导提问']
 const store = useSidebarStore()
 const transcript = ref('')
 const newCustomerName = ref('')
+const intent = ref('')
+const intentReply = ref<IntentReply | null>(null)
 const recognizing = ref(false)
 
 async function copyText(text: string) {
@@ -59,13 +62,27 @@ async function appendChatScreenshots(files: FileList | null) {
   if (!files?.length) return
   recognizing.value = true
   try {
-    const text = await store.extractImages('chat', files)
+    const text = await store.extractFiles('chat', files)
     transcript.value = [transcript.value.trim(), text.trim()].filter(Boolean).join('\n')
-    showToast(`已连续识别 ${files.length} 张聊天截图`)
+    showToast(`已解析 ${files.length} 个聊天文件`)
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '图片识别失败')
+    showToast(error instanceof Error ? error.message : '文件解析失败')
   } finally {
     recognizing.value = false
+  }
+}
+
+async function generateIntentReply() {
+  const value = intent.value.trim()
+  if (!value) {
+    showToast('请先写下你想对客户表达的意思')
+    return
+  }
+  try {
+    intentReply.value = await store.generateIntentReply(value)
+    showToast('已生成定制话术')
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '定制话术生成失败')
   }
 }
 </script>
@@ -110,8 +127,8 @@ async function appendChatScreenshots(files: FileList | null) {
 客户：有没有同行案例？"
       ></textarea>
       <label class="image-upload">
-        {{ recognizing ? '正在连续识别截图...' : '多选上传聊天截图并识别' }}
-        <input accept="image/*" multiple type="file" @change="appendChatScreenshots(($event.target as HTMLInputElement).files)" />
+        {{ recognizing ? '正在连续解析文件...' : '上传聊天截图 / Word / PDF 并识别' }}
+        <input accept=".doc,.docx,.pdf,image/*" multiple type="file" @change="appendChatScreenshots(($event.target as HTMLInputElement).files)" />
       </label>
     </div>
 
@@ -129,6 +146,39 @@ async function appendChatScreenshots(files: FileList | null) {
     <div class="next-action">
       <span>下一步动作</span>
       <MarkdownView :content="analysis?.next_action || '继续确认需求、预算与决策链路'" />
+    </div>
+
+    <div class="intent-panel">
+      <div class="panel-head">
+        <div>
+          <span>不会开口时</span>
+          <strong>告诉 AI 你想推进什么</strong>
+        </div>
+        <button type="button" @click="generateIntentReply">生成</button>
+      </div>
+      <textarea
+        v-model="intent"
+        rows="3"
+        placeholder="例如：我想提醒客户尽快确认预算，但不想显得太催；我想约客户明天看方案；我想让客户把老板拉进来一起沟通。"
+      ></textarea>
+      <article v-if="intentReply" class="intent-result">
+        <span>定制话术</span>
+        <MarkdownView :content="intentReply.reply_suggestion" />
+        <div class="reply-reason">
+          <strong>为什么这样讲</strong>
+          <p>{{ intentReply.reply_explanation }}</p>
+        </div>
+        <div class="reply-reason">
+          <strong>下一步观察</strong>
+          <p>{{ intentReply.next_action }}</p>
+        </div>
+        <button type="button" @click="copyText(intentReply.reply_suggestion)">复制这条</button>
+      </article>
+    </div>
+
+    <div class="reply-toolbar">
+      <strong>推荐回复策略</strong>
+      <button type="button" @click="emit('refreshAnalysis')">刷新策略</button>
     </div>
 
     <div class="reply-list">
@@ -167,6 +217,8 @@ async function appendChatScreenshots(files: FileList | null) {
 .import-panel,
 .signal-grid div,
 .next-action,
+.intent-panel,
+.intent-result,
 .reply-card,
 .empty-card {
   border: 1px solid var(--line);
@@ -176,7 +228,8 @@ async function appendChatScreenshots(files: FileList | null) {
 }
 
 .customer-panel,
-.import-panel {
+.import-panel,
+.intent-panel {
   display: grid;
   gap: 10px;
   padding: 12px;
@@ -298,6 +351,54 @@ textarea {
 .next-action {
   border-color: oklch(0.82 0.045 175);
   background: linear-gradient(180deg, var(--brand-soft), white);
+}
+
+.intent-panel {
+  background: linear-gradient(180deg, white, var(--surface-soft));
+}
+
+.intent-result {
+  display: grid;
+  gap: 9px;
+  padding: 11px;
+  background: white;
+}
+
+.intent-result > span {
+  width: fit-content;
+  padding: 3px 7px;
+  border-radius: 999px;
+  color: var(--brand-strong);
+  background: var(--brand-soft);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.intent-result > button,
+.reply-toolbar button {
+  min-height: 34px;
+  border: 0;
+  border-radius: 8px;
+  color: white;
+  background: var(--brand);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.reply-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.reply-toolbar strong {
+  color: var(--ink);
+  font-size: 15px;
+}
+
+.reply-toolbar button {
+  min-width: 86px;
 }
 
 .reply-list {

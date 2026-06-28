@@ -43,6 +43,12 @@ export interface Analysis {
   new_tags: string[]
 }
 
+export interface IntentReply {
+  reply_suggestion: string
+  reply_explanation: string
+  next_action: string
+}
+
 export interface FeedbackRecord {
   id: number
   original_customer_question: string
@@ -297,6 +303,26 @@ export const useSidebarStore = defineStore('sidebar', {
       this.customer = data.customer
       this.analysis = data.analysis
     },
+    async refreshAnalysis() {
+      this.busyMessage = 'AI 正在重新生成回复策略，会结合最新客户画像、聊天习惯和反馈复盘...'
+      try {
+        await this.loadAnalysis()
+      } finally {
+        this.busyMessage = ''
+      }
+    },
+    async generateIntentReply(intent: string) {
+      this.busyMessage = 'AI 正在把你的推进意图转成客户更容易接受的话术...'
+      try {
+        return await postData<IntentReply>('/api/analysis/intent-reply', {
+          sales_userid: this.salesUserId,
+          external_userid: this.externalUserId,
+          intent
+        })
+      } finally {
+        this.busyMessage = ''
+      }
+    },
     async loadFollowRecords() {
       this.followRecords = await getData<FollowRecord[]>('/api/follow/list', {
         sales_userid: this.salesUserId,
@@ -366,6 +392,14 @@ export const useSidebarStore = defineStore('sidebar', {
       await postData<IpContentRecord>('/api/ip/content/generate', { theme, channel })
       await this.loadIpContents()
     },
+    async refreshDailyIpAdvice() {
+      this.busyMessage = 'AI 正在刷新今日个人 IP 建议，重新结合行业、客户群体和销售指南...'
+      try {
+        await this.loadDailyIpAdvice()
+      } finally {
+        this.busyMessage = ''
+      }
+    },
     async loadDailyIpAdvice() {
       if (!this.token) return
       const data = await getData<{ content: string; date: string }>('/api/ip/daily-advice')
@@ -421,18 +455,21 @@ export const useSidebarStore = defineStore('sidebar', {
       const data = await getData<{ content: string }>('/api/guide/software')
       this.softwareGuide = data.content
     },
-    async extractImages(purpose: 'chat' | 'persona' | 'company', files: FileList | File[]) {
+    async extractFiles(purpose: 'chat' | 'persona' | 'company', files: FileList | File[]) {
       const formData = new FormData()
       formData.append('purpose', purpose)
       Array.from(files).forEach((file) => formData.append('files', file))
-      const purposeLabel = purpose === 'chat' ? '聊天截图' : purpose === 'persona' ? '客户资料图片' : '公司资料图片'
-      this.busyMessage = `AI 正在识别${purposeLabel}，多张图片会按顺序连续分析，请稍等...`
+      const purposeLabel = purpose === 'chat' ? '聊天记录文件' : purpose === 'persona' ? '客户资料文件' : '公司资料文件'
+      this.busyMessage = `AI 正在解析${purposeLabel}，Word/PDF 会先提取文字，图片会连续识别，请稍等...`
       try {
-        const data = await postFormData<{ text: string; count: number; purpose: string }>('/api/vision/extract', formData)
+        const data = await postFormData<{ text: string; count: number; purpose: string }>('/api/file/extract', formData)
         return data.text
       } finally {
         this.busyMessage = ''
       }
+    },
+    async extractImages(purpose: 'chat' | 'persona' | 'company', files: FileList | File[]) {
+      return this.extractFiles(purpose, files)
     }
   }
 })

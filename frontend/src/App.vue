@@ -83,6 +83,14 @@ async function importTranscript(transcript: string) {
   await runAction(() => store.importTranscript(transcript), '已导入并刷新分析', 'AI 正在分析聊天记录、生成客户判断和回复建议，请稍等...')
 }
 
+async function refreshAnalysis() {
+  await runAction(() => store.refreshAnalysis(), '回复策略已刷新')
+}
+
+async function refreshDailyIp() {
+  await runAction(() => store.refreshDailyIpAdvice(), '今日 IP 建议已刷新')
+}
+
 async function selectCustomer(externalUserId: string) {
   await runAction(async () => {
     await store.selectCustomer(externalUserId)
@@ -177,6 +185,7 @@ onMounted(() => {
             :customers="store.customers"
             @create-customer="createCustomer"
             @import="importTranscript"
+            @refresh-analysis="refreshAnalysis"
             @select-customer="selectCustomer"
           />
 
@@ -204,6 +213,7 @@ onMounted(() => {
             :daily-ip-advice="store.dailyIpAdvice"
             :ip-contents="store.ipContents"
             @generate-ip="generateIp"
+            @refresh-daily-ip="refreshDailyIp"
           />
 
           <div v-else class="mine">

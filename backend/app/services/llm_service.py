@@ -49,6 +49,20 @@ DAILY_IP_PROMPT = """你是销售个人 IP 日更教练。
 5. 1 条推荐朋友圈文案"""
 
 
+INTENT_REPLY_PROMPT = """你是该行业顶尖销售教练。
+销售知道自己想推进什么，但不知道如何对客户表达。请结合客户画像、聊天历史、客户人设资料、公司资料、销售指南和历史反馈复盘，把销售的表达意图转成客户更容易接受的话术。
+要求：
+1. 站在客户视角判断这句话会不会有压迫感、会不会像硬推。
+2. 必须贴合客户的聊天习惯、关注点、异议和人设资料。
+3. 不能编造未出现的事实，不能承诺公司资料里没有的政策。
+4. 输出标准 JSON，不要 markdown 代码块。
+字段：
+- reply_suggestion：一条可直接发给客户的话术，120 字以内，可少量 Markdown 加粗重点。
+- reply_explanation：说明这条话术抓住客户什么点、为什么这样讲，120 字以内。
+- next_action：销售发完后下一步该观察或推进什么，40 字以内。
+"""
+
+
 VISION_PROMPTS = {
     "chat": "请识别这些聊天截图中的文字，按时间顺序整理成“客户：... / 销售：...”格式。只输出可用于销售分析的文本，不要编造看不清的内容。",
     "persona": "请识别这些客户朋友圈、自媒体或公开资料截图，提取能体现客户身份、兴趣、业务状态、近期关注点和沟通偏好的信息。输出结构化中文要点。",
@@ -124,6 +138,42 @@ class LLMService:
             return self._normalize(parsed)
         except Exception:
             return self.fallback(chat_history)
+
+    async def generate_intent_reply(
+        self,
+        intent: str,
+        customer_profile: dict[str, Any],
+        chat_history: list[dict[str, Any]],
+        product_knowledge: str,
+        sales_guide: str = "",
+        memory_summary: str = "",
+        feedback_lessons: list[dict[str, Any]] | None = None,
+        persona_sources: list[dict[str, Any]] | None = None,
+    ) -> dict[str, str]:
+        payload = self._payload(
+            INTENT_REPLY_PROMPT,
+            {
+                "sales_intent": intent,
+                "customer_profile": customer_profile,
+                "chat_history": chat_history[:20],
+                "product_knowledge": product_knowledge,
+                "sales_guide": sales_guide,
+                "memory_summary": memory_summary,
+                "global_feedback_lessons": feedback_lessons or [],
+                "customer_persona_sources": persona_sources or [],
+            },
+            temperature=0.42,
+        )
+        try:
+            response = await self.http_client(payload)
+            parsed = json.loads(response["choices"][0]["message"]["content"])
+            return {
+                "reply_suggestion": str(parsed.get("reply_suggestion", ""))[:220],
+                "reply_explanation": str(parsed.get("reply_explanation", ""))[:260],
+                "next_action": str(parsed.get("next_action", ""))[:120],
+            }
+        except Exception:
+            return self.fallback_intent_reply(intent, customer_profile)
 
     async def generate_ip_content(
         self,
@@ -308,6 +358,15 @@ class LLMService:
 
 真正专业的沟通，不是急着报价，而是先把**需求、风险、投入产出**讲清楚。
 """
+
+    def fallback_intent_reply(self, intent: str, customer_profile: dict[str, Any]) -> dict[str, str]:
+        demand = customer_profile.get("core_demand") or "当前关注点"
+        objection = customer_profile.get("objection") or "顾虑"
+        return {
+            "reply_suggestion": f"我理解您现在更关心**{demand}**。关于{intent[:60]}，我先不直接下结论，先结合您的实际情况给您拆成几个可判断的点，方便您决定下一步是否值得继续看。",
+            "reply_explanation": f"先接住客户的{demand}，再把销售想推进的内容转成判断标准，降低硬推感。",
+            "next_action": f"观察客户是否继续追问{objection}",
+        }
 
     def fallback(self, chat_history: list[dict[str, Any]]) -> dict[str, Any]:
         text = " ".join(str(item.get("content", "")) for item in chat_history[:5])
