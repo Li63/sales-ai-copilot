@@ -80,6 +80,24 @@ INTENT_REPLY_PROMPT = """你是该行业顶尖销售教练，特别擅长把销�
 """
 
 
+PERSONA_ANALYSIS_PROMPT = """你是客户人设分析师，也是懂成交的一线销冠。
+请根据客户公开资料、朋友圈/自媒体内容、聊天截图提取信息，给销售一份能立刻用于沟通的客户判断。
+
+要求：
+1. 严格基于输入资料，不编造客户身份、资产、关系、意向。
+2. 重点告诉销售：这个客户可能在意什么、喜欢什么沟通方式、下一次怎么开口更自然、哪些动作容易让客户反感。
+3. 语言要像销售教练在提醒销售，务实、短句、可执行，不要像 AI 报告。
+4. 输出标准 JSON，不要 markdown 代码块。
+
+字段：
+- summary：客户资料透露出的核心判断，80 字以内。
+- communication_style：客户可能更接受的沟通方式，80 字以内。
+- follow_angle：下一次可用的跟进角度，80 字以内。
+- risk_warning：销售需要避免的动作或话术，80 字以内。
+- sales_tip：一句给销售的实战提醒，80 字以内。
+"""
+
+
 VISION_PROMPTS = {
     "chat": "请识别这些聊天截图中的文字，按时间顺序整理成“客户：... / 销售：...”格式。只输出可用于销售分析的文本，不要编造看不清的内容。",
     "persona": "请识别这些客户朋友圈、自媒体或公开资料截图，提取能体现客户身份、兴趣、业务状态、近期关注点和沟通偏好的信息。输出结构化中文要点。",
@@ -195,6 +213,22 @@ class LLMService:
             }
         except Exception:
             return self.fallback_intent_reply(intent, customer_profile)
+
+    async def analyze_persona_source(self, content: str, customer_profile: dict[str, Any] | None = None) -> str:
+        payload = self._payload(
+            PERSONA_ANALYSIS_PROMPT,
+            {
+                "customer_profile": customer_profile or {},
+                "persona_source_content": content[:5000],
+            },
+            temperature=0.25,
+        )
+        try:
+            response = await self._call_text_model(payload)
+            parsed = json.loads(response["choices"][0]["message"]["content"])
+            return self._format_persona_analysis(parsed)
+        except Exception:
+            return self.fallback_persona_analysis(content)
 
     async def generate_ip_content(
         self,
@@ -391,6 +425,29 @@ class LLMService:
             "reply_explanation": f"先承认客户顾虑，再把销售目的包装成客户可判断的标准，压迫感会小很多。",
             "next_action": f"看客户是否继续追问{objection}",
         }
+
+    def fallback_persona_analysis(self, content: str) -> str:
+        text = content.strip().replace("\n", " ")
+        if not text:
+            return ""
+        clue = text[:120]
+        return (
+            f"核心判断：客户公开资料显示：{clue}\n"
+            "沟通方式：先围绕资料里出现的真实关注点开口，少用模板化寒暄。\n"
+            "跟进角度：用一个低压问题确认客户当前是否还在关注这件事。\n"
+            "风险提醒：不要把单次资料当成最终结论，也不要直接推产品。\n"
+            "销售提醒：先让客户感觉你看懂了他，再轻轻推进下一步。"
+        )
+
+    def _format_persona_analysis(self, parsed: dict[str, Any]) -> str:
+        lines = [
+            ("核心判断", parsed.get("summary", "")),
+            ("沟通方式", parsed.get("communication_style", "")),
+            ("跟进角度", parsed.get("follow_angle", "")),
+            ("风险提醒", parsed.get("risk_warning", "")),
+            ("销售提醒", parsed.get("sales_tip", "")),
+        ]
+        return "\n".join(f"{label}：{str(value).strip()[:140]}" for label, value in lines if str(value).strip())
 
     def fallback(self, chat_history: list[dict[str, Any]]) -> dict[str, Any]:
         text = " ".join(str(item.get("content", "")) for item in chat_history[:5])

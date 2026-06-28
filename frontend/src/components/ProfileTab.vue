@@ -161,10 +161,27 @@ async function appendPersonaImages(files: FileList | null) {
       </label>
       <button class="primary" type="button" @click="submitPersona">保存人设资料</button>
 
+      <div class="persona-ai-card">
+        <div class="persona-ai-head">
+          <strong>AI 对客户的实时判断</strong>
+          <span>{{ customer?.persona_updated_at ? customer.persona_updated_at.slice(0, 10) : '保存后生成' }}</span>
+        </div>
+        <MarkdownView
+          v-if="customer?.persona_profile"
+          :content="customer.persona_profile"
+        />
+        <p v-else>
+          保存客户朋友圈、聊天截图或公开资料后，这里会展示 AI 对客户性格、关注点、沟通偏好和跟进角度的判断，销售可以马上拿来参考。
+        </p>
+      </div>
+
       <div class="record-list">
         <div v-for="source in personaSources" :key="source.id" class="record">
-          <strong>{{ source.title }}</strong>
-          <p>{{ source.persona_summary }}</p>
+          <div class="record-head">
+            <strong>{{ source.title }}</strong>
+            <span>AI 分析</span>
+          </div>
+          <MarkdownView :content="source.persona_summary || '已保存资料，等待分析补充。'" />
         </div>
         <p v-if="!personaSources.length" class="empty">暂无该客户的人设资料</p>
       </div>
@@ -446,6 +463,48 @@ textarea {
   gap: 8px;
 }
 
+.persona-ai-card {
+  display: grid;
+  gap: 8px;
+  padding: 11px;
+  border: 1px solid oklch(0.78 0.055 175);
+  border-radius: 8px;
+  background: linear-gradient(180deg, var(--brand-soft), white);
+}
+
+.persona-ai-head,
+.record-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.persona-ai-head strong,
+.record-head strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.persona-ai-head span,
+.record-head span {
+  flex: 0 0 auto;
+  color: var(--brand-strong);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.persona-ai-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
 .record {
   display: grid;
   gap: 6px;
@@ -453,11 +512,6 @@ textarea {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface-soft);
-}
-
-.record strong {
-  color: var(--ink);
-  font-size: 13px;
 }
 
 .record p,

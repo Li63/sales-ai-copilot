@@ -817,9 +817,10 @@ def persona_source_list(
 
 
 @router.post("/persona/source/add")
-def persona_source_add(
+async def persona_source_add(
     body: PersonaSourceRequest,
     db: Annotated[Session, Depends(get_db)],
+    llm: Annotated[LLMService, Depends(get_llm_service)],
     current_user: Annotated[User | None, Depends(_optional_current_user)] = None,
 ):
     active_sales_userid = current_user.sales_userid if current_user else body.sales_userid
@@ -834,7 +835,7 @@ def persona_source_add(
         source_type=body.source_type[:32] or "manual",
         title=(body.title or "客户公开资料")[:128],
         content=content,
-        persona_summary=_summarize_persona_source(content),
+        persona_summary=await llm.analyze_persona_source(content, _customer_payload(customer, db)),
     )
     db.add(source)
     db.flush()

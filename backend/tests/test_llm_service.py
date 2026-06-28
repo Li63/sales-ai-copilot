@@ -97,3 +97,33 @@ async def test_llm_service_sends_vision_payload_with_image_url_content():
     assert captured["messages"][0]["content"][1]["type"] == "image_url"
     assert captured["messages"][0]["content"][1]["image_url"]["url"].startswith("data:image/png;base64,")
     assert "客户：想了解价格" in result
+
+
+@pytest.mark.asyncio
+async def test_llm_service_generates_persona_analysis_for_sales():
+    captured = {}
+
+    async def ok_client(payload):
+        captured.update(payload)
+        return {
+            "choices": [
+                {
+                    "message": {
+                        "content": '{"summary":"客户近期在扩团队，重视交付稳定性。","communication_style":"喜欢直接看结论和案例，不喜欢被催。","follow_angle":"先给同行案例，再轻问当前推进卡点。","risk_warning":"不要一上来压成交或连续追问预算。","sales_tip":"用短句确认标准，让客户觉得你在帮他把风险看清楚。"}'
+                    }
+                }
+            ]
+        }
+
+    service = LLMService(api_key="x", base_url="https://example.test", model="deepseek-chat", http_client=ok_client)
+
+    result = await service.analyze_persona_source(
+        "朋友圈提到最近扩团队，正在比较供应商，担心服务跟不上。",
+        customer_profile={"nickname": "王总", "core_demand": "比较供应商"},
+    )
+
+    assert captured["messages"][0]["role"] == "system"
+    assert "客户人设分析师" in captured["messages"][0]["content"]
+    assert "扩团队" in result
+    assert "跟进角度" in result
+    assert "销售提醒" in result
