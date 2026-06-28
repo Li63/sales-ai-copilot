@@ -1,9 +1,16 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { showToast } from 'vant'
 
 const props = defineProps<{
   content: string
 }>()
+
+async function copyContent() {
+  if (!props.content?.trim()) return
+  await navigator.clipboard.writeText(props.content.replace(/\*\*/g, ''))
+  showToast('已复制')
+}
 
 function escapeHtml(value: string) {
   return value
@@ -73,11 +80,34 @@ const html = computed(() => {
 </script>
 
 <template>
-  <div class="markdown-view" v-html="html"></div>
+  <div class="markdown-wrap">
+    <button v-if="content" class="copy" type="button" @click.stop="copyContent">复制</button>
+    <div class="markdown-view" v-html="html"></div>
+  </div>
 </template>
 
 <style scoped>
+.markdown-wrap {
+  position: relative;
+}
+
+.copy {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
+  min-width: 44px;
+  height: 26px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--brand-strong);
+  background: var(--surface);
+  font-size: 12px;
+  font-weight: 900;
+}
+
 .markdown-view {
+  padding-top: 2px;
   color: var(--ink);
   font-size: 13px;
   line-height: 1.72;

@@ -462,8 +462,14 @@ async def js_config(url: str, wecom: Annotated[WeComClient, Depends(get_wecom_cl
 
 
 @router.get("/customer/info")
-def customer_info(sales_userid: str, external_userid: str, db: Annotated[Session, Depends(get_db)]):
-    customer = CustomerService(db).get_or_create_customer(sales_userid, external_userid)
+def customer_info(
+    sales_userid: str,
+    external_userid: str,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User | None, Depends(_optional_current_user)] = None,
+):
+    active_sales_userid = current_user.sales_userid if current_user else sales_userid
+    customer = CustomerService(db).get_or_create_customer(active_sales_userid, external_userid)
     return success(_customer_payload(customer, db))
 
 
@@ -679,17 +685,28 @@ async def file_extract(
 
 
 @router.get("/follow/list")
-def follow_list(sales_userid: str, external_userid: str, db: Annotated[Session, Depends(get_db)]):
-    customer = CustomerService(db).get_or_create_customer(sales_userid, external_userid)
-    return success(_follow_payloads(db, customer.id, sales_userid, limit=100))
+def follow_list(
+    sales_userid: str,
+    external_userid: str,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User | None, Depends(_optional_current_user)] = None,
+):
+    active_sales_userid = current_user.sales_userid if current_user else sales_userid
+    customer = CustomerService(db).get_or_create_customer(active_sales_userid, external_userid)
+    return success(_follow_payloads(db, customer.id, active_sales_userid, limit=100))
 
 
 @router.post("/follow/add")
-def follow_add(body: FollowAddRequest, db: Annotated[Session, Depends(get_db)]):
-    customer = CustomerService(db).get_or_create_customer(body.sales_userid, body.external_userid)
+def follow_add(
+    body: FollowAddRequest,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User | None, Depends(_optional_current_user)] = None,
+):
+    active_sales_userid = current_user.sales_userid if current_user else body.sales_userid
+    customer = CustomerService(db).get_or_create_customer(active_sales_userid, body.external_userid)
     record = FollowRecord(
         customer_id=customer.id,
-        sales_userid=body.sales_userid,
+        sales_userid=active_sales_userid,
         content=body.content,
         next_follow_time=body.next_follow_time,
     )
@@ -721,13 +738,24 @@ def follow_overview(db: Annotated[Session, Depends(get_db)], current_user: Annot
 
 
 @router.get("/feedback/list")
-def feedback_list(sales_userid: str, external_userid: str, db: Annotated[Session, Depends(get_db)]):
-    return success(_feedback_payloads(db, sales_userid, external_userid, limit=50))
+def feedback_list(
+    sales_userid: str,
+    external_userid: str,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User | None, Depends(_optional_current_user)] = None,
+):
+    active_sales_userid = current_user.sales_userid if current_user else sales_userid
+    return success(_feedback_payloads(db, active_sales_userid, external_userid, limit=50))
 
 
 @router.post("/feedback/add")
-def feedback_add(body: FeedbackRequest, db: Annotated[Session, Depends(get_db)]):
-    customer = CustomerService(db).get_or_create_customer(body.sales_userid, body.external_userid)
+def feedback_add(
+    body: FeedbackRequest,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User | None, Depends(_optional_current_user)] = None,
+):
+    active_sales_userid = current_user.sales_userid if current_user else body.sales_userid
+    customer = CustomerService(db).get_or_create_customer(active_sales_userid, body.external_userid)
     outcome = body.outcome if body.outcome in {"good", "bad", "neutral"} else "neutral"
     customer_reply = body.customer_reply.strip() or body.customer_feedback.strip()
     sales_review = body.sales_review.strip()
@@ -736,7 +764,7 @@ def feedback_add(body: FeedbackRequest, db: Annotated[Session, Depends(get_db)])
     combined_feedback = f"客户回复：{customer_reply}\n销售看法：{sales_review}".strip()
     record = ReplyFeedback(
         customer_id=customer.id,
-        sales_userid=body.sales_userid,
+        sales_userid=active_sales_userid,
         external_userid=body.external_userid,
         original_customer_question=(body.original_customer_question or "")[:1000],
         ai_reply=body.ai_reply[:2000],
@@ -751,19 +779,30 @@ def feedback_add(body: FeedbackRequest, db: Annotated[Session, Depends(get_db)])
 
 
 @router.get("/persona/source/list")
-def persona_source_list(sales_userid: str, external_userid: str, db: Annotated[Session, Depends(get_db)]):
-    return success(_persona_source_payloads(db, sales_userid, external_userid, limit=30))
+def persona_source_list(
+    sales_userid: str,
+    external_userid: str,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User | None, Depends(_optional_current_user)] = None,
+):
+    active_sales_userid = current_user.sales_userid if current_user else sales_userid
+    return success(_persona_source_payloads(db, active_sales_userid, external_userid, limit=30))
 
 
 @router.post("/persona/source/add")
-def persona_source_add(body: PersonaSourceRequest, db: Annotated[Session, Depends(get_db)]):
-    customer = CustomerService(db).get_or_create_customer(body.sales_userid, body.external_userid)
+def persona_source_add(
+    body: PersonaSourceRequest,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User | None, Depends(_optional_current_user)] = None,
+):
+    active_sales_userid = current_user.sales_userid if current_user else body.sales_userid
+    customer = CustomerService(db).get_or_create_customer(active_sales_userid, body.external_userid)
     content = body.content.strip()[:5000]
     if not content:
         return {"code": 1, "message": "请填写客户资料内容", "data": {}}
     source = PersonaSource(
         customer_id=customer.id,
-        sales_userid=body.sales_userid,
+        sales_userid=active_sales_userid,
         external_userid=body.external_userid,
         source_type=body.source_type[:32] or "manual",
         title=(body.title or "客户公开资料")[:128],
