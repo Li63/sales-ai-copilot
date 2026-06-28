@@ -48,7 +48,7 @@ function submitFeedback() {
 
 function submitPersona() {
   if (!personaContent.value.trim()) {
-    showToast('请粘贴客户资料或上传图片后补充关键文字')
+    showToast('请粘贴客户资料，或上传 Word/PDF/图片后补充关键文字')
     return
   }
   emit('addPersona', {
@@ -64,11 +64,11 @@ async function appendPersonaImages(files: FileList | null) {
   if (!files?.length) return
   recognizingPersona.value = true
   try {
-    const text = await store.extractImages('persona', files)
+    const text = await store.extractFiles('persona', files)
     personaContent.value = [personaContent.value.trim(), text.trim()].filter(Boolean).join('\n\n')
-    showToast(`已连续识别 ${files.length} 张客户资料图`)
+    showToast(`已解析 ${files.length} 个客户资料文件`)
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '图片识别失败')
+    showToast(error instanceof Error ? error.message : '文件解析失败')
   } finally {
     recognizingPersona.value = false
   }
@@ -132,10 +132,10 @@ async function appendPersonaImages(files: FileList | null) {
         <span>长期积累，持续进化</span>
       </div>
       <input v-model="personaTitle" placeholder="资料标题：朋友圈动态、公众号文章、视频号简介" />
-      <textarea v-model="personaContent" rows="5" placeholder="粘贴客户公开内容，或一次性选择多张图片上传识别。资料会绑定当前客户，用于后续判断沟通风格与跟进角度。"></textarea>
+      <textarea v-model="personaContent" rows="5" placeholder="粘贴客户公开内容，或上传朋友圈截图、Word、PDF。资料会绑定当前客户，用于后续判断沟通风格与跟进角度。"></textarea>
       <label class="image-upload">
-        {{ recognizingPersona ? '正在连续识别图片...' : '多选上传客户资料图片' }}
-        <input accept="image/*" multiple type="file" @change="appendPersonaImages(($event.target as HTMLInputElement).files)" />
+        {{ recognizingPersona ? '正在解析客户资料文件...' : '上传客户资料图片 / Word / PDF' }}
+        <input accept=".doc,.docx,.pdf,image/*" multiple type="file" @change="appendPersonaImages(($event.target as HTMLInputElement).files)" />
       </label>
       <button class="primary" type="button" @click="submitPersona">保存人设资料</button>
 

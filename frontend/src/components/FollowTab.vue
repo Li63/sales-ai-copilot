@@ -30,11 +30,11 @@ async function appendFollowImages(files: FileList | null) {
   if (!files?.length) return
   recognizing.value = true
   try {
-    const text = await store.extractImages('chat', files)
-    content.value = [content.value.trim(), `本次沟通截图识别：\n${text.trim()}`].filter(Boolean).join('\n\n')
-    showToast(`已连续识别 ${files.length} 张聊天截图`)
+    const text = await store.extractFiles('chat', files)
+    content.value = [content.value.trim(), `本次沟通文件解析：\n${text.trim()}`].filter(Boolean).join('\n\n')
+    showToast(`已解析 ${files.length} 个跟进文件`)
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '图片识别失败')
+    showToast(error instanceof Error ? error.message : '文件解析失败')
   } finally {
     recognizing.value = false
   }
@@ -46,12 +46,12 @@ async function appendFollowImages(files: FileList | null) {
     <div class="composer">
       <div class="composer-head">
         <strong>新增跟进</strong>
-        <span>文本 / 多图识别</span>
+        <span>文本 / Word / PDF / 图片</span>
       </div>
-      <textarea v-model="content" rows="5" placeholder="记录本次沟通结果、客户顾虑、下次要推进的动作。也可以一次性上传多张聊天截图，识别后直接保存为跟进记录。"></textarea>
+      <textarea v-model="content" rows="5" placeholder="记录本次沟通结果、客户顾虑、下次要推进的动作。也可以上传聊天截图、Word 或 PDF，解析后直接保存为跟进记录。"></textarea>
       <label class="image-upload">
-        {{ recognizing ? '正在连续识别截图...' : '多选上传聊天截图并写入跟进' }}
-        <input accept="image/*" multiple type="file" @change="appendFollowImages(($event.target as HTMLInputElement).files)" />
+        {{ recognizing ? '正在解析文件...' : '上传聊天截图 / Word / PDF 并写入跟进' }}
+        <input accept=".doc,.docx,.pdf,image/*" multiple type="file" @change="appendFollowImages(($event.target as HTMLInputElement).files)" />
       </label>
       <button type="button" @click="submit">保存跟进</button>
     </div>
