@@ -111,6 +111,37 @@ PERSONA_ANALYSIS_PROMPT = """你是客户人设分析师，也是懂成交的一
 - icebreaker：一条销售可以直接发出的低压破冰话术，100 字以内。
 """
 
+PERSONA_IMAGE_ANALYSIS_PROMPT = """你是客户截图情报分析师，也是懂成交的一线销冠。
+销售上传的多数资料是截图：抖音主页、抖音作品、评论区、朋友圈、企查查、官网、聊天记录。你的任务是直接看图，不要只做 OCR。
+
+要求：
+1. 同时利用图片内容、图片版式、销售补充文字、来源链接和客户已有资料。
+2. 先判断截图类型：抖音主页、抖音作品、评论区、朋友圈、企查查、官网、聊天记录、其他。
+3. 区分“可确认事实”和“销售假设”；不要把截图里没有的信息当事实。
+4. 抖音看账号定位、作品场景、评论痛点和获客方式；朋友圈看真实性格、信任偏好和关系温度；企查查看企业真实经营、规模、风险和实力证据。
+5. 对企业客户输出能直接指导销售的全方位解析。
+6. 输出标准 JSON，不要 markdown 代码块。
+
+字段：
+- summary：截图透露出的核心判断，80 字以内。
+- screenshot_type：截图类型，20 字以内。
+- confirmed_facts：截图中可以确认的事实，100 字以内。
+- sales_hypothesis：基于截图形成的销售假设，100 字以内。
+- enterprise_positioning：企业做什么、卖给谁、处于什么业务场景，90 字以内。
+- strength_evidence：资料里能证明企业实力或可信度的证据，90 字以内；没有证据要说证据不足。
+- business_clues：经营状态、业务阶段或组织变化线索，80 字以内。
+- content_positioning：抖音/公开内容呈现出的定位、表达风格或人设线索，80 字以内。
+- communication_style：客户可能更接受的沟通方式，80 字以内。
+- decision_logic：客户可能的判断标准或决策逻辑，80 字以内。
+- purchase_motivation：客户可能的采购/合作动机或增长诉求，80 字以内。
+- deal_opportunity：从截图能看出的潜在成交机会，80 字以内。
+- customer_pain：客户可能正在意或害怕的痛点，80 字以内。
+- risk_warning：销售需要避免的动作或话术，80 字以内。
+- follow_strategy：下一轮跟进策略，包含节奏和切入点，80 字以内。
+- icebreaker：一条销售可以直接发出的低压破冰话术，100 字以内。
+- missing_evidence：还缺哪些截图或资料，80 字以内。
+"""
+
 
 VISION_PROMPTS = {
     "chat": "请识别这些聊天截图中的文字，按时间顺序整理成“客户：... / 销售：...”格式。只输出可用于销售分析的文本，不要编造看不清的内容。",
@@ -251,6 +282,51 @@ class LLMService:
             return self._format_persona_analysis(parsed)
         except Exception:
             return self.fallback_persona_analysis(content, source_type=source_type, source_url=source_url)
+
+    async def analyze_persona_images(
+        self,
+        images: list[dict[str, str]],
+        customer_profile: dict[str, Any] | None = None,
+        source_type: str = "manual",
+        source_url: str = "",
+        text_context: str = "",
+    ) -> str:
+        if not images:
+            return self.fallback_persona_analysis(text_context, source_type=source_type, source_url=source_url)
+        context = {
+            "customer_profile": customer_profile or {},
+            "source_type": source_type,
+            "source_url": source_url,
+            "sales_text_context": text_context[:4000],
+            "analysis_warning": "请直接看截图做判断；不要只复述 OCR。无法从截图确认的信息必须写成销售假设或缺失证据。",
+        }
+        content: list[dict[str, Any]] = [
+            {"type": "text", "text": f"{PERSONA_IMAGE_ANALYSIS_PROMPT}\n\n上下文：{json.dumps(context, ensure_ascii=False)}"}
+        ]
+        for image in images[:6]:
+            content.append(
+                {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:{image['content_type']};base64,{image['base64']}"},
+                }
+            )
+        payload = {
+            "model": self.vision_model,
+            "messages": [{"role": "user", "content": content}],
+            "temperature": 0.18,
+        }
+        try:
+            response = await asyncio.wait_for(self.vision_http_client(payload), timeout=VISION_MODEL_TIMEOUT_SECONDS)
+            parsed = json.loads(response["choices"][0]["message"]["content"])
+            return self._format_persona_analysis(parsed)
+        except Exception:
+            image_names = "、".join(image.get("filename", "截图") for image in images[:6])
+            fallback_content = (
+                f"截图已上传：{image_names}\n"
+                f"销售补充：{text_context}\n"
+                "视觉模型暂时未返回结构化结果，只能先作为待验证截图资料。"
+            )
+            return self.fallback_persona_analysis(fallback_content, source_type=source_type, source_url=source_url)
 
     async def generate_ip_content(
         self,
@@ -475,6 +551,9 @@ class LLMService:
     def _format_persona_analysis(self, parsed: dict[str, Any]) -> str:
         lines = [
             ("核心判断", parsed.get("summary", "")),
+            ("截图类型", parsed.get("screenshot_type", "")),
+            ("可确认事实", parsed.get("confirmed_facts", "")),
+            ("销售假设", parsed.get("sales_hypothesis", "")),
             ("企业定位", parsed.get("enterprise_positioning", "")),
             ("实力证据", parsed.get("strength_evidence", "")),
             ("经营线索", parsed.get("business_clues", "")),
@@ -489,6 +568,7 @@ class LLMService:
             ("客户痛点", parsed.get("customer_pain", "")),
             ("跟进策略", parsed.get("follow_strategy", "")),
             ("破冰话术", parsed.get("icebreaker", "")),
+            ("缺失证据", parsed.get("missing_evidence", "")),
         ]
         return "\n".join(f"{label}：{str(value).strip()[:140]}" for label, value in lines if str(value).strip())
 

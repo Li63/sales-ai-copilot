@@ -37,7 +37,7 @@ const sourceTypes = [
     label: '抖音主页',
     short: '主页',
     guide: '账号定位、简介、置顶作品、主页截图',
-    placeholder: '粘贴抖音主页链接、简介、账号定位、置顶作品、评论里反复出现的问题。也可以上传主页截图，系统会先识别文字。',
+    placeholder: '粘贴抖音主页链接、简介、账号定位、置顶作品、评论里反复出现的问题。也可以直接上传主页截图，系统会看截图里的账号结构、内容风格和互动线索。',
   },
   {
     value: 'douyin_content',
@@ -227,25 +227,22 @@ async function appendPersonaImages(files: FileList | null) {
   if (!files?.length) return
   recognizingPersona.value = true
   try {
-    const text = await store.extractFiles('persona', files)
-    personaContent.value = [personaContent.value.trim(), text.trim()].filter(Boolean).join('\n\n')
     syncSourceTypeFromInput()
-    if (personaContent.value.trim() || personaSourceUrl.value.trim()) {
-      emit('addPersona', {
-        title: personaTitle.value.trim() || `${selectedSource.value.label}图片资料`,
+    await store.analyzePersonaIntelligence(
+      {
+        title: personaTitle.value.trim() || `${selectedSource.value.label}截图资料`,
         source_type: personaSourceType.value,
         source_url: personaSourceUrl.value.trim(),
         content: personaContent.value.trim(),
-      })
-      personaTitle.value = ''
-      personaSourceUrl.value = ''
-      personaContent.value = ''
-      showToast(`已解析 ${files.length} 个文件，正在自动分析`)
-      return
-    }
-    showToast(`已解析 ${files.length} 个客户资料文件`)
+      },
+      files
+    )
+    personaTitle.value = ''
+    personaSourceUrl.value = ''
+    personaContent.value = ''
+    showToast(`已上传 ${files.length} 个文件，正在生成多模态客户情报`)
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '文件解析失败')
+    showToast(error instanceof Error ? error.message : '客户截图分析失败')
   } finally {
     recognizingPersona.value = false
   }
@@ -332,7 +329,7 @@ async function appendPersonaImages(files: FileList | null) {
       <div class="intake-card">
         <div class="intake-head">
           <span>系统已识别：{{ selectedSource.label }}</span>
-          <strong>抖音看账号和内容，企查查看企业真实情况，朋友圈看性格和信任偏好</strong>
+          <strong>截图会被直接看图分析；抖音看账号和内容，企查查看企业真实情况，朋友圈看性格和信任偏好</strong>
         </div>
         <input v-model="personaTitle" :placeholder="`资料标题：${selectedSource.label} / 客户公开资料`" @input="syncSourceTypeFromInput" />
         <input v-model="personaSourceUrl" placeholder="来源链接：抖音主页、企查查页面、官网链接，可不填" @input="syncSourceTypeFromInput" />
@@ -344,7 +341,7 @@ async function appendPersonaImages(files: FileList | null) {
         ></textarea>
         <div class="action-row">
           <label class="file-drop">
-            {{ recognizingPersona ? '正在解析并自动分析...' : '上传并自动分析图片 / Word / PDF' }}
+            {{ recognizingPersona ? '正在直接看图并生成客户情报...' : '上传截图并深度分析 / Word / PDF' }}
             <input accept=".doc,.docx,.pdf,image/*" multiple type="file" @change="appendPersonaImages(($event.target as HTMLInputElement).files)" />
           </label>
           <button class="primary" type="button" @click="submitPersona">保存并分析</button>

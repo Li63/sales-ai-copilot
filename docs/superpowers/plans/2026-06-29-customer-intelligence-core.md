@@ -4,7 +4,7 @@
 
 **Goal:** Turn the persona tab into a customer intelligence core that auto-analyzes uploads, parses Douyin share text, hides long source records, and outputs enterprise-level battle cards.
 
-**Architecture:** Backend enriches incoming persona sources into structured evidence before LLM analysis. Frontend provides one intelligence intake workflow and auto-submits extracted files after OCR. Existing APIs remain compatible.
+**Architecture:** Backend enriches incoming persona sources into structured evidence before LLM analysis. Screenshot uploads go through a direct multimodal persona endpoint, while Word/PDF/text still use text extraction. Frontend provides one intelligence intake workflow. Existing APIs remain compatible.
 
 **Tech Stack:** FastAPI, SQLAlchemy, pytest, Vue 3, Pinia, Vant, TypeScript.
 
@@ -13,6 +13,7 @@
 - Keep Vue 3 + Vant; do not add a heavy UI framework.
 - Keep `/api/persona/source/add` backward compatible.
 - Only parse Douyin share text/link unless reliable page fetch exists; never pretend fetched video details.
+- Do not downgrade screenshots to OCR-only text when a vision model is configured.
 - Hide long source records by default.
 - Server deployment may only touch `/data/sales-ai/app`.
 
@@ -44,7 +45,7 @@
 
 - [ ] Replace manual source selection emphasis with one intake card.
 - [ ] Auto-detect source type from pasted content/link.
-- [ ] Upload files, append extracted text, and immediately emit `addPersona`.
+- [ ] Upload screenshots/files through `/api/persona/intelligence/analyze` so screenshots are analyzed multimodally and documents are extracted server-side.
 - [ ] Hide source records behind a collapsible details panel.
 - [ ] Run `cd frontend && npm run build`.
 

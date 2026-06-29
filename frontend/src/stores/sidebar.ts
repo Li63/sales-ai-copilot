@@ -402,6 +402,26 @@ export const useSidebarStore = defineStore('sidebar', {
       })
       await Promise.all([this.loadPersonaSources(), this.loadAnalysis()])
     },
+    async analyzePersonaIntelligence(
+      payload: { title?: string; content?: string; source_type?: string; source_url?: string },
+      files: FileList | File[]
+    ) {
+      const formData = new FormData()
+      formData.append('sales_userid', this.salesUserId)
+      formData.append('external_userid', this.externalUserId)
+      formData.append('title', payload.title || '')
+      formData.append('content', payload.content || '')
+      formData.append('source_type', payload.source_type || 'manual')
+      formData.append('source_url', payload.source_url || '')
+      Array.from(files).forEach((file) => formData.append('files', file))
+      this.busyMessage = 'AI 正在直接看客户截图，会结合账号、内容、评论、企查查/朋友圈线索生成客户情报...'
+      try {
+        await postFormData<PersonaSource>('/api/persona/intelligence/analyze', formData)
+        await Promise.all([this.loadPersonaSources(), this.loadAnalysis()])
+      } finally {
+        this.busyMessage = ''
+      }
+    },
     async loadIpContents() {
       if (!this.token) return
       this.ipContents = await getData<IpContentRecord[]>('/api/ip/content/list')

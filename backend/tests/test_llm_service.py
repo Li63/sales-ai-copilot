@@ -187,3 +187,47 @@ async def test_llm_persona_formats_enterprise_battle_fields():
     assert "实力证据：以设备实拍、工厂身份和细分产品标签建立可信度。" in result
     assert "采购动机：可能更关注获客线索、设备询盘和经销合作。" in result
     assert "破冰话术：我看到您在发萝卜切条机这类细分设备" in result
+
+
+@pytest.mark.asyncio
+async def test_llm_service_analyzes_persona_images_with_context():
+    captured = {}
+
+    async def ok_client(payload):
+        captured.update(payload)
+        return {
+            "choices": [
+                {
+                    "message": {
+                        "content": '{"summary":"截图显示客户在抖音发布食品机械设备内容。","screenshot_type":"抖音作品截图","enterprise_positioning":"食品机械设备厂家，面向果蔬加工客户。","strength_evidence":"有设备实拍和细分产品标签，但企业规模仍需企查查验证。","content_positioning":"用具体机器场景获取精准询盘。","purchase_motivation":"可能关注获客线索和经销合作。","deal_opportunity":"围绕切条机细分场景切入。","customer_pain":"需要证明设备效率、稳定性和售后。","follow_strategy":"先问近期询盘客户更关注效率还是售后。","icebreaker":"看到您在发萝卜切条机，想请教下现在客户更关心效率还是售后稳定？"}'
+                    }
+                }
+            ]
+        }
+
+    service = LLMService(
+        api_key="x",
+        base_url="https://example.test",
+        model="text-model",
+        vision_api_key="vx",
+        vision_base_url="https://vision.example.test",
+        vision_model="vision-model",
+        vision_http_client=ok_client,
+    )
+
+    result = await service.analyze_persona_images(
+        [{"filename": "douyin.png", "content_type": "image/png", "base64": "ZmFrZQ=="}],
+        customer_profile={"nickname": "客户A"},
+        source_type="douyin_content",
+        source_url="https://v.douyin.com/VhrrmUHw3SM/",
+        text_context="销售补充：这是客户发的萝卜切条机作品截图。",
+    )
+
+    assert captured["model"] == "vision-model"
+    assert captured["messages"][0]["content"][1]["type"] == "image_url"
+    prompt_text = captured["messages"][0]["content"][0]["text"]
+    assert "截图类型" in prompt_text
+    assert "销售补充：这是客户发的萝卜切条机作品截图。" in prompt_text
+    assert "企业定位：食品机械设备厂家" in result
+    assert "截图类型：抖音作品截图" in result
+    assert "破冰话术：看到您在发萝卜切条机" in result

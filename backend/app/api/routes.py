@@ -856,6 +856,90 @@ async def persona_source_add(
     return success(_persona_source_payload(source))
 
 
+@router.post("/persona/intelligence/analyze")
+async def persona_intelligence_analyze(
+    db: Annotated[Session, Depends(get_db)],
+    llm: Annotated[LLMService, Depends(get_llm_service)],
+    current_user: Annotated[User | None, Depends(_optional_current_user)] = None,
+    sales_userid: Annotated[str, Form()] = "",
+    external_userid: Annotated[str, Form()] = "",
+    source_type: Annotated[str, Form()] = "manual",
+    source_url: Annotated[str, Form()] = "",
+    title: Annotated[str | None, Form()] = None,
+    content: Annotated[str, Form()] = "",
+    files: Annotated[list[UploadFile] | None, File()] = None,
+):
+    active_sales_userid = current_user.sales_userid if current_user else sales_userid
+    if not active_sales_userid or not external_userid:
+        return {"code": 1, "message": "客户参数缺失", "data": {}}
+    customer = CustomerService(db).get_or_create_customer(active_sales_userid, external_userid)
+    images: list[dict[str, str]] = []
+    text_blocks: list[str] = [content.strip()] if content.strip() else []
+    if files:
+        for file in files[:8]:
+            uploaded = await file.read()
+            if len(uploaded) > MAX_FILE_BYTES:
+                return {"code": 1, "message": f"{file.filename or '文件'} 不能超过 12MB", "data": {}}
+            content_type = file.content_type or "application/octet-stream"
+            filename = file.filename or "file"
+            suffix = _file_suffix(filename)
+            if content_type in SUPPORTED_IMAGE_TYPES:
+                if len(uploaded) > MAX_IMAGE_BYTES:
+                    return {"code": 1, "message": "单张图片不能超过 5MB", "data": {}}
+                images.append({"filename": filename, "content_type": content_type, "base64": base64.b64encode(uploaded).decode("ascii")})
+                continue
+            if suffix == ".pdf":
+                text_blocks.append(_extract_pdf_text(uploaded, filename))
+                continue
+            if suffix == ".docx":
+                text_blocks.append(_extract_docx_text(uploaded, filename))
+                continue
+            if suffix == ".doc":
+                return {"code": 1, "message": "暂不支持旧版 .doc，请另存为 .docx 或 PDF 后上传", "data": {}}
+            if content_type in SUPPORTED_TEXT_TYPES or suffix in {".txt", ".md", ".csv", ".json"}:
+                text_blocks.append(f"# {filename}\n{_decode_text(uploaded)}")
+                continue
+            return {"code": 1, "message": f"不支持的文件类型：{filename}", "data": {}}
+    raw_context = "\n\n".join(block.strip() for block in text_blocks if block.strip())
+    prepared_title, prepared_content, inferred_type, cleaned_url = _prepare_persona_source_input(title, raw_context, source_type, source_url)
+    if images and not prepared_content:
+        prepared_content = "用户上传了客户截图，请基于图片直接识别截图类型、平台、账号、内容、评论、企业线索和销售假设。"
+    if not images and not prepared_content:
+        return {"code": 1, "message": "请上传截图/文件，或填写客户资料内容", "data": {}}
+    if images:
+        persona_summary = await llm.analyze_persona_images(
+            images,
+            customer_profile=_customer_payload(customer, db),
+            source_type=inferred_type,
+            source_url=cleaned_url,
+            text_context=prepared_content,
+        )
+        stored_content = (
+            f"{prepared_content}\n\n"
+            f"多模态截图分析：本次直接分析 {len(images)} 张截图，未将图片仅降级为 OCR 文本。\n"
+            f"{persona_summary}"
+        ).strip()
+    else:
+        persona_summary = await llm.analyze_persona_source(prepared_content, _customer_payload(customer, db), inferred_type, cleaned_url)
+        stored_content = prepared_content
+    source = PersonaSource(
+        customer_id=customer.id,
+        sales_userid=active_sales_userid,
+        external_userid=external_userid,
+        source_type=inferred_type,
+        title=prepared_title,
+        source_url=cleaned_url or None,
+        content=stored_content[:7000],
+        persona_summary=persona_summary,
+    )
+    db.add(source)
+    db.flush()
+    _refresh_customer_persona(db, customer)
+    db.commit()
+    db.refresh(source)
+    return success(_persona_source_payload(source))
+
+
 @router.get("/company/material/list")
 def company_material_list(db: Annotated[Session, Depends(get_db)], current_user: Annotated[User, Depends(get_current_user)]):
     if current_user.role == "tenant_admin":

@@ -55,6 +55,22 @@ def _client():
         ):
             return f"来源类型：{source_type}\n原始链接：{source_url}\n核心判断：{content[:20]}"
 
+        async def analyze_persona_images(
+            self,
+            images,
+            customer_profile=None,
+            source_type="manual",
+            source_url="",
+            text_context="",
+        ):
+            return (
+                f"截图类型：抖音作品截图\n"
+                f"来源类型：{source_type}\n"
+                f"原始链接：{source_url}\n"
+                f"企业定位：客户是食品机械设备厂家。\n"
+                f"实力证据：截图数量 {len(images)}，{text_context[:30]}"
+            )
+
     def override_db():
         session = testing_session_local()
         try:
@@ -155,6 +171,37 @@ def test_persona_source_add_accepts_url_only_as_pending_evidence():
         source = db.query(PersonaSource).one()
         assert "用户只提供了链接" in source.content
         assert "不能当成已抓取完整页面" in source.content
+        db.close()
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_persona_intelligence_analyze_uses_multimodal_images_directly():
+    client, session_local = _client()
+    try:
+        response = client.post(
+            "/api/persona/intelligence/analyze",
+            data={
+                "sales_userid": "user-1",
+                "external_userid": "external-1",
+                "source_type": "douyin_content",
+                "source_url": "https://v.douyin.com/VhrrmUHw3SM/",
+                "title": "抖音作品截图",
+                "content": "销售补充：客户发的是萝卜切条机作品截图。",
+            },
+            files={"files": ("douyin.png", b"fake-image", "image/png")},
+        )
+
+        assert response.status_code == 200
+        payload = response.json()["data"]
+        assert payload["source_type"] == "douyin_content"
+        assert "截图类型：抖音作品截图" in payload["persona_summary"]
+        assert "企业定位：客户是食品机械设备厂家。" in payload["persona_summary"]
+
+        db = session_local()
+        source = db.query(PersonaSource).one()
+        assert "多模态截图分析" in source.content
+        assert "销售补充：客户发的是萝卜切条机作品截图。" in source.content
         db.close()
     finally:
         app.dependency_overrides.clear()
