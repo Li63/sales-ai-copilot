@@ -184,58 +184,7 @@ onMounted(() => {
         @update-sales-status="(userId, status) => runAction(() => store.updateSalesStatus(userId, status), '销售状态已更新', '正在更新销售账号状态...')"
       />
 
-      <template v-else>
-        <CustomerHeader :customer="store.customer" :user="store.user" />
-
-        <div v-if="store.error" class="error">{{ store.error }}</div>
-
-        <PullRefresh v-model="refreshing" class="content" @refresh="refresh">
-          <RecommendationTab
-            v-if="active === 0"
-            :analysis="store.analysis"
-            :customer="store.customer"
-            :customers="store.customers"
-            @create-customer="createCustomer"
-            @import="importTranscript"
-            @refresh-analysis="refreshAnalysis"
-            @select-customer="selectCustomer"
-          />
-
-          <CustomerLibrary v-else-if="active === 1" :groups="store.customersByCategory" @select="selectCustomer" />
-
-          <ProfileTab
-            v-else-if="active === 2"
-            :analysis="store.analysis"
-            :customer="store.customer"
-            :feedback-records="store.feedbackRecords"
-            :persona-sources="store.personaSources"
-            @add-feedback="addFeedback"
-            @add-persona="addPersona"
-            @update-status="updateCustomerStatus"
-          />
-
-          <FollowTab v-else-if="active === 3" :records="store.followRecords" @add="addFollow" />
-
-          <div v-else-if="active === 4" class="summary">
-            <SummaryDashboard :customers="store.customers" :overview="store.followOverview" />
-            <FollowOverviewPanel :overview="store.followOverview" />
-          </div>
-
-          <GrowthPanel
-            v-else-if="active === 5"
-            :daily-ip-advice="store.dailyIpAdvice"
-            :ip-contents="store.ipContents"
-            @generate-ip="generateIp"
-            @refresh-daily-ip="refreshDailyIp"
-          />
-
-          <div v-else class="mine">
-            <CompanyMaterialPanel :materials="store.companyMaterials" @add="addCompanyMaterial" />
-            <GuidePanel :sales-technique-guide="store.salesTechniqueGuide" :user="store.user" @save="saveGuide" />
-            <SoftwareGuidePanel :content="store.softwareGuide" />
-          </div>
-        </PullRefresh>
-
+      <section v-else class="sales-workspace">
         <nav class="bottom-nav" aria-label="主导航">
           <button
             v-for="(item, index) in navItems"
@@ -244,10 +193,63 @@ onMounted(() => {
             type="button"
             @click="active = index"
           >
-            {{ item }}
+            <span>{{ item }}</span>
           </button>
         </nav>
-      </template>
+
+        <div class="workspace-main">
+          <CustomerHeader :customer="store.customer" :user="store.user" />
+
+          <div v-if="store.error" class="error">{{ store.error }}</div>
+
+          <PullRefresh v-model="refreshing" class="content" @refresh="refresh">
+            <RecommendationTab
+              v-if="active === 0"
+              :analysis="store.analysis"
+              :customer="store.customer"
+              :customers="store.customers"
+              @create-customer="createCustomer"
+              @import="importTranscript"
+              @refresh-analysis="refreshAnalysis"
+              @select-customer="selectCustomer"
+            />
+
+            <CustomerLibrary v-else-if="active === 1" :groups="store.customersByCategory" @select="selectCustomer" />
+
+            <ProfileTab
+              v-else-if="active === 2"
+              :analysis="store.analysis"
+              :customer="store.customer"
+              :feedback-records="store.feedbackRecords"
+              :persona-sources="store.personaSources"
+              @add-feedback="addFeedback"
+              @add-persona="addPersona"
+              @update-status="updateCustomerStatus"
+            />
+
+            <FollowTab v-else-if="active === 3" :records="store.followRecords" @add="addFollow" />
+
+            <div v-else-if="active === 4" class="summary">
+              <SummaryDashboard :customers="store.customers" :overview="store.followOverview" />
+              <FollowOverviewPanel :overview="store.followOverview" />
+            </div>
+
+            <GrowthPanel
+              v-else-if="active === 5"
+              :daily-ip-advice="store.dailyIpAdvice"
+              :ip-contents="store.ipContents"
+              @generate-ip="generateIp"
+              @refresh-daily-ip="refreshDailyIp"
+            />
+
+            <div v-else class="mine">
+              <CompanyMaterialPanel :materials="store.companyMaterials" @add="addCompanyMaterial" />
+              <GuidePanel :sales-technique-guide="store.salesTechniqueGuide" :user="store.user" @save="saveGuide" />
+              <SoftwareGuidePanel :content="store.softwareGuide" />
+            </div>
+          </PullRefresh>
+        </div>
+      </section>
     </template>
 
     <div v-if="store.busyMessage" class="ai-busy" role="status" aria-live="polite">
@@ -263,27 +265,29 @@ onMounted(() => {
 <style scoped>
 .shell {
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
   min-height: 100vh;
-  width: min(100vw, 980px);
+  width: min(100vw, var(--shell-max));
   margin: 0 auto;
   background:
-    linear-gradient(180deg, oklch(1 0.004 95 / 0.82), oklch(0.97 0.014 112 / 0.92)),
-    var(--bg);
+    linear-gradient(180deg, oklch(1 0.004 95 / 0.64), oklch(0.96 0.018 178 / 0.72)),
+    oklch(1 0.004 95 / 0.42);
   box-shadow:
-    0 0 0 1px oklch(0.86 0.026 105 / 0.72),
-    0 24px 80px oklch(0.2 0.045 224 / 0.12);
+    0 0 0 1px oklch(1 0 0 / 0.56),
+    0 36px 110px oklch(0.16 0.046 235 / 0.13);
+  isolation: isolate;
 }
 
 .shell::before {
   content: "";
   position: fixed;
-  inset: 0 max(0px, calc((100vw - 980px) / 2)) auto;
-  height: 230px;
+  inset: 0 max(0px, calc((100vw - var(--shell-max)) / 2)) auto;
+  height: 340px;
   pointer-events: none;
   background:
-    radial-gradient(circle at 18% 0%, oklch(0.82 0.08 174 / 0.32), transparent 210px),
-    radial-gradient(circle at 86% 10%, oklch(0.9 0.085 82 / 0.4), transparent 190px);
+    radial-gradient(circle at 18% 0%, oklch(0.82 0.08 174 / 0.34), transparent 260px),
+    radial-gradient(circle at 86% 6%, oklch(0.9 0.085 82 / 0.34), transparent 250px),
+    linear-gradient(180deg, oklch(1 0.004 95 / 0.44), transparent);
   z-index: 0;
 }
 
@@ -295,19 +299,19 @@ onMounted(() => {
 .workspace-bar {
   position: sticky;
   top: 0;
-  z-index: 15;
+  z-index: 25;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 78px;
-  padding: 14px 16px 12px;
+  min-height: 82px;
+  padding: 14px clamp(16px, 3vw, 34px) 12px;
   color: var(--ink);
   background:
-    linear-gradient(135deg, oklch(1 0.004 95 / 0.9), oklch(0.94 0.047 171 / 0.82)),
-    oklch(1 0 0 / 0.82);
-  border-bottom: 1px solid oklch(0.87 0.026 105 / 0.75);
-  box-shadow: 0 14px 34px oklch(0.18 0.04 224 / 0.07);
-  backdrop-filter: blur(18px);
+    linear-gradient(135deg, oklch(1 0.004 95 / 0.86), oklch(0.94 0.047 171 / 0.76)),
+    oklch(1 0 0 / 0.72);
+  border-bottom: 1px solid oklch(1 0 0 / 0.56);
+  box-shadow: 0 18px 44px oklch(0.16 0.046 235 / 0.08);
+  backdrop-filter: blur(24px);
 }
 
 .workspace-bar div {
@@ -317,11 +321,11 @@ onMounted(() => {
 
 .workspace-bar span {
   width: fit-content;
-  padding: 4px 8px;
+  padding: 5px 10px;
   border: 1px solid oklch(0.79 0.056 175 / 0.65);
   border-radius: 999px;
   color: var(--brand-strong);
-  background: oklch(1 0 0 / 0.52);
+  background: oklch(1 0 0 / 0.64);
   font-size: 10px;
   font-weight: 950;
   letter-spacing: 0.08em;
@@ -329,8 +333,8 @@ onMounted(() => {
 }
 
 .workspace-bar strong {
-  font-size: 20px;
-  letter-spacing: -0.03em;
+  font-size: clamp(20px, 2.2vw, 30px);
+  letter-spacing: -0.05em;
 }
 
 .workspace-bar em {
@@ -341,7 +345,7 @@ onMounted(() => {
 }
 
 .workspace-bar button {
-  height: 34px;
+  height: 38px;
   border: 1px solid oklch(0.78 0.052 175 / 0.62);
   border-radius: 999px;
   padding: 0 13px;
@@ -350,6 +354,14 @@ onMounted(() => {
   font-size: 12px;
   font-weight: 900;
   box-shadow: var(--shadow-tiny);
+}
+
+.sales-workspace {
+  position: relative;
+}
+
+.workspace-main {
+  min-width: 0;
 }
 
 .onboarding {
@@ -404,7 +416,7 @@ onMounted(() => {
 }
 
 .content {
-  min-height: calc(100vh - 128px);
+  min-height: calc(100vh - 150px);
   padding-bottom: 92px;
 }
 
@@ -435,9 +447,9 @@ onMounted(() => {
 
 .bottom-nav {
   position: fixed;
-  right: max(12px, calc((100vw - 956px) / 2));
+  right: max(12px, calc((100vw - min(100vw, var(--shell-max)) + 24px) / 2));
   bottom: 12px;
-  left: max(12px, calc((100vw - 956px) / 2));
+  left: max(12px, calc((100vw - min(100vw, var(--shell-max)) + 24px) / 2));
   z-index: 20;
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -445,15 +457,17 @@ onMounted(() => {
   min-height: 62px;
   padding: 8px;
   padding-bottom: calc(8px + env(safe-area-inset-bottom));
-  border: 1px solid oklch(0.88 0.021 105 / 0.82);
+  border: 1px solid oklch(1 0 0 / 0.68);
   border-radius: 24px;
-  background: oklch(1 0.004 95 / 0.82);
-  box-shadow: 0 18px 46px oklch(0.18 0.04 224 / 0.16);
-  backdrop-filter: blur(18px);
+  background: oklch(1 0.004 95 / 0.78);
+  box-shadow: 0 20px 56px oklch(0.16 0.046 235 / 0.18);
+  backdrop-filter: blur(22px);
 }
 
 .bottom-nav button {
   position: relative;
+  display: grid;
+  place-items: center;
   min-width: 0;
   height: 44px;
   border: 0;
@@ -465,6 +479,16 @@ onMounted(() => {
   transition: color 0.18s ease, background 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
 }
 
+.bottom-nav button::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  margin-bottom: 3px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.32;
+}
+
 .bottom-nav .active {
   color: white;
   background:
@@ -472,6 +496,10 @@ onMounted(() => {
     linear-gradient(135deg, var(--brand-strong), var(--brand));
   box-shadow: 0 10px 20px oklch(0.34 0.095 184 / 0.22);
   transform: translateY(-1px);
+}
+
+.bottom-nav .active::before {
+  opacity: 0.9;
 }
 
 .ai-busy {
@@ -537,7 +565,128 @@ onMounted(() => {
   }
 }
 
+@media (min-width: 1180px) {
+  .shell {
+    min-height: 100vh;
+    border-inline: 1px solid oklch(1 0 0 / 0.36);
+  }
+
+  .workspace-bar {
+    min-height: 88px;
+    padding-left: calc(var(--rail-width) + 34px);
+  }
+
+  .sales-workspace {
+    display: grid;
+    grid-template-columns: var(--rail-width) minmax(0, 1fr);
+    gap: 0;
+    padding: var(--page-gap) clamp(22px, 3vw, 38px) 38px 0;
+  }
+
+  .workspace-main {
+    width: min(100%, 1320px);
+    margin-inline: auto 0;
+  }
+
+  .content {
+    min-height: calc(100vh - 126px);
+    padding-bottom: 0;
+  }
+
+  .mine,
+  .summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: var(--page-gap);
+  }
+
+  .workspace-main :deep(.library),
+  .workspace-main :deep(.follow),
+  .workspace-main :deep(.ip-builder) {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: var(--page-gap);
+    padding: var(--page-gap);
+  }
+
+  .workspace-main :deep(.library-head),
+  .workspace-main :deep(.search-box),
+  .workspace-main :deep(.hero),
+  .workspace-main :deep(.daily) {
+    grid-column: 1 / -1;
+  }
+
+  .workspace-main :deep(.level-section) {
+    grid-column: span 6;
+    border-radius: var(--radius-lg);
+  }
+
+  .workspace-main :deep(.follow .composer) {
+    grid-column: span 5;
+    position: sticky;
+    top: 108px;
+  }
+
+  .workspace-main :deep(.follow .timeline) {
+    grid-column: span 7;
+  }
+
+  .workspace-main :deep(.ip-builder > .panel:not(.daily)) {
+    grid-column: span 4;
+  }
+
+  .workspace-main :deep(.ip-list) {
+    grid-column: span 8;
+  }
+
+  .bottom-nav {
+    position: sticky;
+    top: 108px;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    align-self: start;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 9px;
+    width: 74px;
+    min-height: auto;
+    margin: 0 14px;
+    padding: 10px;
+    border-radius: 28px;
+  }
+
+  .bottom-nav::before {
+    content: "AI";
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    margin: 2px auto 8px;
+    border-radius: 18px;
+    color: white;
+    background:
+      radial-gradient(circle at 76% 0%, var(--accent), transparent 40px),
+      linear-gradient(135deg, var(--brand-strong), var(--brand));
+    font-size: 14px;
+    font-weight: 950;
+    box-shadow: var(--shadow-glow);
+  }
+
+  .bottom-nav button {
+    height: 58px;
+    border-radius: 20px;
+    font-size: 12px;
+  }
+}
+
 @media (max-width: 420px) {
+  .workspace-bar {
+    min-height: 72px;
+  }
+
+  .workspace-bar em {
+    display: none;
+  }
+
   .bottom-nav {
     gap: 2px;
     right: 8px;

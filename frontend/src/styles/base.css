@@ -1,31 +1,37 @@
 :root {
   color-scheme: light;
-  --bg: oklch(0.975 0.014 93);
-  --bg-wash: oklch(0.955 0.026 172);
-  --bg-deep: oklch(0.23 0.048 221);
-  --surface: oklch(0.998 0.003 95);
-  --surface-soft: oklch(0.965 0.018 104);
-  --surface-raised: oklch(0.99 0.009 105);
-  --surface-glass: oklch(1 0.004 95 / 0.76);
-  --ink: oklch(0.205 0.043 229);
-  --muted: oklch(0.49 0.033 224);
-  --subtle: oklch(0.64 0.028 220);
-  --line: oklch(0.885 0.017 102);
-  --line-strong: oklch(0.805 0.036 177);
-  --brand: oklch(0.53 0.118 174);
-  --brand-strong: oklch(0.34 0.095 184);
-  --brand-soft: oklch(0.93 0.051 171);
-  --accent: oklch(0.68 0.128 78);
-  --accent-strong: oklch(0.47 0.108 68);
-  --accent-soft: oklch(0.94 0.055 84);
+  --bg: oklch(0.972 0.012 226);
+  --bg-wash: oklch(0.94 0.035 178);
+  --bg-deep: oklch(0.2 0.055 233);
+  --surface: oklch(0.996 0.004 96);
+  --surface-soft: oklch(0.958 0.014 102);
+  --surface-raised: oklch(0.99 0.007 105);
+  --surface-glass: oklch(1 0.004 95 / 0.78);
+  --ink: oklch(0.18 0.05 232);
+  --muted: oklch(0.47 0.035 229);
+  --subtle: oklch(0.64 0.027 220);
+  --line: oklch(0.88 0.018 106);
+  --line-strong: oklch(0.76 0.056 178);
+  --brand: oklch(0.55 0.12 176);
+  --brand-strong: oklch(0.31 0.1 190);
+  --brand-soft: oklch(0.92 0.054 174);
+  --accent: oklch(0.72 0.13 82);
+  --accent-strong: oklch(0.49 0.118 72);
+  --accent-soft: oklch(0.95 0.055 85);
   --warn: oklch(0.68 0.135 70);
   --danger: oklch(0.57 0.18 26);
-  --radius-lg: 22px;
-  --radius-md: 16px;
-  --radius-sm: 12px;
-  --shadow: 0 24px 60px oklch(0.18 0.04 224 / 0.14);
-  --shadow-soft: 0 12px 30px oklch(0.18 0.04 224 / 0.08);
-  --shadow-tiny: 0 6px 18px oklch(0.18 0.04 224 / 0.06);
+  --info: oklch(0.58 0.13 238);
+  --shell-max: 1480px;
+  --rail-width: 104px;
+  --page-gap: 18px;
+  --radius-xl: 30px;
+  --radius-lg: 24px;
+  --radius-md: 18px;
+  --radius-sm: 13px;
+  --shadow: 0 30px 90px oklch(0.16 0.046 235 / 0.16);
+  --shadow-soft: 0 16px 42px oklch(0.16 0.046 235 / 0.09);
+  --shadow-tiny: 0 8px 20px oklch(0.16 0.046 235 / 0.07);
+  --shadow-glow: 0 24px 70px oklch(0.48 0.11 180 / 0.18);
   font-family: "HarmonyOS Sans SC", "MiSans", "Source Han Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 
@@ -37,6 +43,7 @@ html {
   min-height: 100%;
   background: var(--bg);
   text-rendering: geometricPrecision;
+  scroll-behavior: smooth;
 }
 
 body {
@@ -44,11 +51,31 @@ body {
   min-height: 100vh;
   color: var(--ink);
   background:
-    radial-gradient(circle at 12% 0%, oklch(0.91 0.06 178 / 0.9) 0, transparent 310px),
-    radial-gradient(circle at 92% 12%, oklch(0.94 0.065 84 / 0.9) 0, transparent 280px),
-    linear-gradient(180deg, oklch(0.985 0.012 95) 0, oklch(0.955 0.018 120) 520px, oklch(0.975 0.012 95) 100%),
+    radial-gradient(circle at 12% -4%, oklch(0.86 0.08 178 / 0.78) 0, transparent 330px),
+    radial-gradient(circle at 88% 2%, oklch(0.91 0.075 82 / 0.7) 0, transparent 310px),
+    radial-gradient(circle at 78% 72%, oklch(0.78 0.08 238 / 0.18) 0, transparent 420px),
+    linear-gradient(135deg, oklch(0.985 0.006 100) 0, oklch(0.955 0.02 184) 42%, oklch(0.976 0.012 98) 100%),
     var(--bg);
+  background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(oklch(0.26 0.035 230 / 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, oklch(0.26 0.035 230 / 0.035) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: linear-gradient(180deg, black, transparent 74%);
+  z-index: -1;
+}
+
+::selection {
+  color: white;
+  background: var(--brand-strong);
 }
 
 button,
@@ -72,7 +99,7 @@ input:focus,
 textarea:focus {
   border-color: var(--brand);
   background: white;
-  box-shadow: 0 0 0 4px oklch(0.81 0.065 175 / 0.28);
+  box-shadow: 0 0 0 4px oklch(0.81 0.065 175 / 0.3), var(--shadow-tiny);
 }
 
 button:focus-visible,
@@ -114,6 +141,12 @@ textarea:focus-visible {
 
 .van-pull-refresh {
   overflow: visible;
+}
+
+@media (min-width: 1180px) {
+  :root {
+    --page-gap: 22px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

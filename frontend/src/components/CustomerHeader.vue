@@ -43,12 +43,14 @@ const levelClass = (level?: string) => `level level-${level || 'C'}`
   gap: 12px;
   margin: 14px 14px 0;
   padding: 16px;
-  border: 1px solid oklch(0.86 0.026 105 / 0.74);
+  border: 1px solid oklch(1 0 0 / 0.62);
   border-radius: var(--radius-lg);
   background:
-    radial-gradient(circle at 92% 8%, oklch(0.9 0.075 84 / 0.58), transparent 145px),
-    linear-gradient(135deg, oklch(1 0.004 95 / 0.96), oklch(0.94 0.046 171 / 0.78));
+    radial-gradient(circle at 92% 8%, oklch(0.9 0.075 84 / 0.52), transparent 180px),
+    radial-gradient(circle at 8% 0%, oklch(0.82 0.08 178 / 0.18), transparent 190px),
+    linear-gradient(135deg, oklch(1 0.004 95 / 0.92), oklch(0.94 0.046 171 / 0.74));
   box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(18px);
 }
 
 .customer-header::before {
@@ -71,8 +73,8 @@ const levelClass = (level?: string) => `level level-${level || 'C'}`
 .avatar {
   display: grid;
   place-items: center;
-  width: 46px;
-  height: 46px;
+  width: 50px;
+  height: 50px;
   flex: 0 0 auto;
   border: 2px solid oklch(1 0 0 / 0.76);
   border-radius: 16px;
@@ -105,7 +107,7 @@ const levelClass = (level?: string) => `level level-${level || 'C'}`
   min-width: 0;
   overflow: hidden;
   color: var(--ink);
-  font-size: 19px;
+  font-size: clamp(19px, 2vw, 26px);
   letter-spacing: -0.03em;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -167,4 +169,46 @@ const levelClass = (level?: string) => `level level-${level || 'C'}`
 .level-B { color: oklch(0.34 0.11 160); background: oklch(0.93 0.045 160); }
 .level-C { color: oklch(0.42 0.025 245); background: oklch(0.92 0.012 245); }
 .level-D { color: oklch(0.42 0.04 25); background: oklch(0.92 0.025 25); }
+
+@media (min-width: 760px) {
+  .customer-header {
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 0.55fr);
+    align-items: center;
+    margin: var(--page-gap) var(--page-gap) 0;
+    padding: 18px 20px;
+  }
+
+  .meta-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (min-width: 1180px) {
+  .customer-header {
+    margin: 0 var(--page-gap) 0;
+    padding: 22px 24px;
+    border-radius: var(--radius-xl);
+  }
+
+  .identity-row {
+    gap: 16px;
+  }
+
+  .avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 20px;
+  }
+
+  .avatar img {
+    border-radius: 18px;
+  }
+
+  .meta-row span {
+    min-height: 48px;
+    display: grid;
+    align-items: center;
+    padding-inline: 14px;
+  }
+}
 </style>

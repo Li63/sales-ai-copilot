@@ -373,7 +373,7 @@ async function appendPersonaImages(files: FileList | null) {
       <p v-else class="empty-text">客户判断不是一次性的。持续上传抖音、企查查、官网和聊天截图后，系统会逐步更新长期画像。</p>
     </article>
 
-    <article class="panel">
+    <article class="panel source-panel">
       <div class="panel-head">
         <strong>已吸收情报</strong>
         <button class="ghost-toggle" type="button" @click="showSourceRecords = !showSourceRecords">
@@ -398,7 +398,7 @@ async function appendPersonaImages(files: FileList | null) {
       </div>
     </article>
 
-    <article class="panel">
+    <article class="panel tags-panel">
       <div class="panel-head">
         <strong>客户标签</strong>
         <span>{{ customer?.tags?.length || 0 }} 个</span>
@@ -411,7 +411,7 @@ async function appendPersonaImages(files: FileList | null) {
       </div>
     </article>
 
-    <article class="panel">
+    <article class="panel feedback-panel">
       <div class="panel-head">
         <strong>客户反馈复盘</strong>
         <span>让销售助手越用越懂你</span>
@@ -954,6 +954,120 @@ textarea {
   margin: 0;
   padding: 12px;
   text-align: center;
+}
+
+@media (min-width: 760px) {
+  .panorama {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--page-gap);
+    padding: var(--page-gap);
+  }
+
+  .profile-hero,
+  .status-strip,
+  .battle-board,
+  .workflow-panel,
+  .profile-memory {
+    grid-column: 1 / -1;
+  }
+
+  .panel,
+  .signal-grid {
+    min-width: 0;
+  }
+
+  .signal-grid {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 1180px) {
+  .panorama {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .profile-hero,
+  .status-strip,
+  .battle-board,
+  .workflow-panel,
+  .panel,
+  .signal-grid article {
+    border-color: oklch(1 0 0 / 0.62);
+    background-color: var(--surface-glass);
+    backdrop-filter: blur(16px);
+  }
+
+  .profile-hero {
+    grid-column: span 5;
+    min-height: 178px;
+    padding: 24px;
+    border-radius: var(--radius-xl);
+  }
+
+  .status-strip {
+    grid-column: span 7;
+    min-height: 178px;
+    align-content: center;
+    padding: 24px;
+    border-radius: var(--radius-xl);
+  }
+
+  .battle-board {
+    grid-column: 1 / -1;
+    padding: 20px;
+    border-radius: var(--radius-xl);
+  }
+
+  .battle-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .battle-card {
+    min-height: 176px;
+    border-radius: var(--radius-lg);
+  }
+
+  .workflow-panel {
+    grid-column: 1 / -1;
+    padding: 20px;
+    border-radius: var(--radius-xl);
+  }
+
+  .workflow-steps {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .source-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .intake-card {
+    padding: 18px;
+    border-radius: var(--radius-lg);
+  }
+
+  .signal-grid {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .profile-memory {
+    grid-column: span 7;
+  }
+
+  .source-panel {
+    grid-column: span 5;
+  }
+
+  .tags-panel {
+    grid-column: span 5;
+  }
+
+  .feedback-panel {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (max-width: 760px) {

@@ -222,10 +222,11 @@ async function generateIntentReply() {
 .intent-result,
 .reply-card,
 .empty-card {
-  border: 1px solid oklch(0.87 0.021 105 / 0.86);
+  border: 1px solid oklch(1 0 0 / 0.62);
   border-radius: var(--radius-md);
-  background: var(--surface);
+  background: var(--surface-glass);
   box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(16px);
 }
 
 .customer-panel,
@@ -241,8 +242,9 @@ async function generateIntentReply() {
   overflow: hidden;
   border-color: oklch(0.78 0.052 175 / 0.74);
   background:
-    radial-gradient(circle at 92% 12%, oklch(0.89 0.078 82 / 0.74), transparent 150px),
-    linear-gradient(135deg, oklch(1 0.004 95), var(--brand-soft) 110%);
+    radial-gradient(circle at 92% 12%, oklch(0.89 0.078 82 / 0.7), transparent 170px),
+    radial-gradient(circle at 10% 0%, oklch(0.82 0.08 178 / 0.22), transparent 180px),
+    linear-gradient(135deg, oklch(1 0.004 95 / 0.94), var(--brand-soft) 112%);
 }
 
 .customer-panel::after {
@@ -478,6 +480,12 @@ textarea {
   border-color: var(--brand);
 }
 
+.reply-card:hover {
+  transform: translateY(-2px);
+  border-color: oklch(0.78 0.06 178 / 0.72);
+  box-shadow: var(--shadow), 0 0 0 1px oklch(1 0 0 / 0.5);
+}
+
 .reply-card > span {
   width: fit-content;
   margin-bottom: 8px;
@@ -541,6 +549,89 @@ textarea {
 @media (max-width: 560px) {
   .signal-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 760px) {
+  .recommendation {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--page-gap);
+    padding: var(--page-gap);
+  }
+
+  .import-panel,
+  .intent-panel,
+  .reply-toolbar,
+  .reply-list {
+    grid-column: 1 / -1;
+  }
+
+  .reply-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1180px) {
+  .recommendation {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .customer-panel {
+    grid-column: span 4;
+    min-height: 236px;
+    padding: 20px;
+    border-radius: var(--radius-xl);
+  }
+
+  .import-panel {
+    grid-column: span 8;
+    min-height: 236px;
+    padding: 20px;
+    border-radius: var(--radius-xl);
+  }
+
+  .signal-grid {
+    grid-column: span 4;
+    align-self: stretch;
+  }
+
+  .signal-grid div,
+  .next-action,
+  .intent-panel {
+    border-radius: var(--radius-lg);
+  }
+
+  .signal-grid div {
+    min-height: 132px;
+    padding: 18px;
+  }
+
+  .next-action {
+    grid-column: span 4;
+    min-height: 132px;
+    padding: 18px;
+  }
+
+  .intent-panel {
+    grid-column: span 4;
+    min-height: 132px;
+    padding: 18px;
+  }
+
+  .reply-toolbar,
+  .reply-list {
+    grid-column: 1 / -1;
+  }
+
+  .reply-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .reply-card {
+    min-height: 280px;
+    border-radius: var(--radius-lg);
   }
 }
 </style>
