@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { showToast } from 'vant'
 import type { Analysis, Customer, FeedbackRecord, PersonaSource } from '../stores/sidebar'
 import { useSidebarStore } from '../stores/sidebar'
+import { copyPlainText } from '../utils/clipboard'
 import MarkdownView from './MarkdownView.vue'
 
 const props = defineProps<{
@@ -30,24 +31,119 @@ const personaSourceUrl = ref('')
 const recognizingPersona = ref(false)
 
 const sourceTypes = [
-  { value: 'douyin_profile', label: '抖音主页' },
-  { value: 'douyin_content', label: '抖音内容' },
-  { value: 'qichacha', label: '企查查' },
-  { value: 'website', label: '网站资料' },
-  { value: 'manual', label: '手动观察' }
+  {
+    value: 'douyin_profile',
+    label: '抖音主页',
+    short: '主页',
+    guide: '账号定位、简介、置顶作品、主页截图',
+    placeholder: '粘贴抖音主页链接、简介、账号定位、置顶作品、评论里反复出现的问题。也可以上传主页截图，系统会先识别文字。',
+  },
+  {
+    value: 'douyin_content',
+    label: '抖音内容',
+    short: '内容',
+    guide: '爆款标题、口播、评论、互动线索',
+    placeholder: '粘贴抖音作品标题、口播摘要、评论高频问题、互动情况。重点写客户在内容里想证明什么，以及粉丝在问什么。',
+  },
+  {
+    value: 'qichacha',
+    label: '企查查',
+    short: '企查',
+    guide: '经营范围、风险、招聘、股权、阶段',
+    placeholder: '粘贴企查查/天眼查资料摘要：经营范围、成立时间、招聘、风险、融资、股权、公开动态。不要粘贴无关长表格。',
+  },
+  {
+    value: 'website',
+    label: '官网资料',
+    short: '官网',
+    guide: '产品页、案例、媒体报道、服务对象',
+    placeholder: '粘贴官网、产品页、案例、媒体报道或公开页面摘要。重点写业务方向、服务对象、案例和近期变化。',
+  },
+  {
+    value: 'manual',
+    label: '销售观察',
+    short: '观察',
+    guide: '朋友圈、线下沟通、共同好友反馈',
+    placeholder: '粘贴销售自己的观察：客户朋友圈、线下沟通、共同好友反馈、客户提过但聊天记录里没有沉淀的细节。',
+  },
 ] as const
 
 const replyOptions = computed(() => props.analysis?.reply_suggestions || [])
 const score = computed(() => props.customer?.intention_score ?? 50)
 const scoreStyle = computed(() => `--score: ${Math.max(0, Math.min(100, score.value))}%`)
+const selectedSource = computed(() => sourceTypes.find((item) => item.value === personaSourceType.value) || sourceTypes[0])
+const completedSourceTypes = computed(() => new Set(props.personaSources.map((source) => source.source_type)))
 const sourceTypeLabel = (type: string) => sourceTypes.find((item) => item.value === type)?.label || '客户资料'
-const personaPlaceholder = computed(() => {
-  if (personaSourceType.value === 'douyin_profile') return '粘贴抖音主页简介、账号定位、置顶作品、主页截图识别结果。重点写客户怎么介绍自己、常讲什么案例、评论里有哪些真实顾虑。'
-  if (personaSourceType.value === 'douyin_content') return '粘贴抖音作品标题、口播摘要、评论高频问题、互动情况。AI 会提取内容定位、客户关注点和可用开场角度。'
-  if (personaSourceType.value === 'qichacha') return '粘贴企查查/天眼查等资料摘要：经营范围、成立时间、招聘、风险、融资、股权或公开动态。不要粘贴无关长表格。'
-  if (personaSourceType.value === 'website') return '粘贴官网、产品页、媒体报道或公开页面摘要。重点写业务方向、服务对象、案例、近期变化。'
-  return '粘贴销售自己的观察：客户朋友圈、线下沟通、公开资料、共同好友反馈等。'
+const personaText = computed(() => [props.customer?.persona_profile || '', props.personaSources[0]?.persona_summary || ''].filter(Boolean).join('\n'))
+
+const workflowSteps = computed(() => [
+  {
+    title: '选资料源',
+    desc: '抖音、企查查、官网、观察都能补画像',
+    done: Boolean(personaSourceType.value),
+  },
+  {
+    title: '放链接和文件',
+    desc: '粘贴主页/企查查链接，上传截图或文档',
+    done: Boolean(personaSourceUrl.value || personaContent.value || props.personaSources.length),
+  },
+  {
+    title: 'AI 拆解',
+    desc: '提取成交机会、痛点、沟通风格',
+    done: props.personaSources.length > 0,
+  },
+  {
+    title: '生成作战卡',
+    desc: '销售直接拿去破冰和跟进',
+    done: Boolean(props.customer?.persona_profile),
+  },
+])
+
+const sourceProgress = computed(() => {
+  const done = sourceTypes.filter((item) => completedSourceTypes.value.has(item.value)).length
+  return `${done}/${sourceTypes.length}`
 })
+
+const battleCards = computed(() => [
+  {
+    label: '成交机会',
+    title: pickInsight(['成交机会', '跟进角度', '决策逻辑', '核心判断'], props.analysis?.next_action || props.customer?.core_demand || '等待更多资料判断成交窗口'),
+    hint: '从客户公开动作里找到可切入的合作窗口。',
+  },
+  {
+    label: '客户痛点',
+    title: pickInsight(['客户痛点', '风险提醒', '当前异议', '异议', '经营线索'], props.customer?.objection || props.analysis?.objection || '暂未发现明确痛点，先用低压问题验证现状'),
+    hint: '先验证，不急着教育客户。',
+  },
+  {
+    label: '跟进策略',
+    title: pickInsight(['跟进策略', '销售提醒', '沟通方式', '下一步动作'], props.analysis?.next_action || '先用资料线索破冰，再确认客户当前优先级'),
+    hint: '把跟进节奏从“催”变成“帮客户判断”。',
+  },
+  {
+    label: '破冰话术',
+    title: pickInsight(['破冰话术'], replyOptions.value[1] || '我看您最近在关注这个方向，我不确定现在是不是重点，想先和您确认一个小问题。'),
+    hint: '低压开场，客户更容易接话。',
+    copyable: true,
+  },
+])
+
+function pickInsight(labels: string[], fallback: string) {
+  const lines = personaText.value.split(/\n+/).map((line) => line.trim()).filter(Boolean)
+  for (const label of labels) {
+    const marker = `${label}：`
+    const matched = lines.find((line) => line.includes(marker))
+    if (matched) {
+      return matched.slice(matched.indexOf(marker) + marker.length).replace(/^[-\s]+/, '').trim()
+    }
+  }
+  return fallback || '等待 AI 结合更多资料继续拆解'
+}
+
+async function copyCard(text: string) {
+  const copied = await copyPlainText(text)
+  showToast(copied ? '已复制作战话术' : '复制失败，请长按文字复制')
+}
 
 function submitFeedback() {
   const reply = selectedReply.value || replyOptions.value[0] || ''
@@ -59,7 +155,7 @@ function submitFeedback() {
     ai_reply: reply,
     customer_reply: customerReply.value.trim(),
     sales_review: salesReview.value.trim(),
-    outcome: outcome.value
+    outcome: outcome.value,
   })
   customerReply.value = ''
   salesReview.value = ''
@@ -71,10 +167,10 @@ function submitPersona() {
     return
   }
   emit('addPersona', {
-    title: personaTitle.value.trim() || '客户公开资料',
+    title: personaTitle.value.trim() || selectedSource.value.label,
     source_type: personaSourceType.value,
     source_url: personaSourceUrl.value.trim(),
-    content: personaContent.value.trim()
+    content: personaContent.value.trim(),
   })
   personaTitle.value = ''
   personaSourceUrl.value = ''
@@ -98,11 +194,11 @@ async function appendPersonaImages(files: FileList | null) {
 
 <template>
   <section class="panorama">
-    <div class="hero">
-      <div>
-        <span>客户全景建设</span>
+    <div class="profile-hero">
+      <div class="hero-copy">
+        <span>客户作战全景</span>
         <strong>{{ customer?.nickname || '请选择客户' }}</strong>
-        <p>把客户意向、人设资料、沟通反馈和下一步成交路径放在一起看，减少销售凭感觉跟进。</p>
+        <p>先把抖音主页、企查查资料和销售观察补齐，再让 AI 拆成销冠能直接执行的成交打法。</p>
       </div>
       <div class="score-ring" :style="scoreStyle">
         <strong>{{ score }}</strong>
@@ -110,16 +206,10 @@ async function appendPersonaImages(files: FileList | null) {
       </div>
     </div>
 
-    <article class="panel status-panel">
+    <article class="status-strip">
       <div>
-        <strong>{{ customer?.lifecycle_status === 'closed' ? '客户已成交' : '成交状态' }}</strong>
-        <p>
-          {{
-            customer?.lifecycle_status === 'closed'
-              ? `系统会重点学习这个客户的成交节奏、客户全景和有效话术，用来优化后续建议。${customer?.closed_at ? `成交时间：${customer.closed_at.slice(0, 10)}` : ''}`
-              : '确认成交后请标记为已成交，系统会把它作为高价值成功样本持续沉淀。'
-          }}
-        </p>
+        <span>{{ customer?.lifecycle_status === 'closed' ? '已成交样本' : '跟进中客户' }}</span>
+        <strong>{{ customer?.lifecycle_status === 'closed' ? '沉淀成交经验，反哺后续话术' : '还没成交，先补齐判断证据' }}</strong>
       </div>
       <button
         type="button"
@@ -131,7 +221,73 @@ async function appendPersonaImages(files: FileList | null) {
       </button>
     </article>
 
-    <div class="insight-grid">
+    <article class="battle-board">
+      <div class="board-head">
+        <div>
+          <span>AI 销冠作战卡</span>
+          <strong>把画像拆成下一步打法</strong>
+        </div>
+        <em>{{ customer?.persona_updated_at ? customer.persona_updated_at.slice(0, 10) : '等待资料' }}</em>
+      </div>
+      <div class="battle-grid">
+        <article v-for="card in battleCards" :key="card.label" class="battle-card">
+          <span>{{ card.label }}</span>
+          <strong>{{ card.title }}</strong>
+          <p>{{ card.hint }}</p>
+          <button v-if="card.copyable" type="button" @click="copyCard(card.title)">复制破冰</button>
+        </article>
+      </div>
+    </article>
+
+    <article class="workflow-panel">
+      <div class="board-head">
+        <div>
+          <span>客户资料上传工作流</span>
+          <strong>抖音链接 + 企查查 + 文件资料</strong>
+        </div>
+        <em>资料完成度 {{ sourceProgress }}</em>
+      </div>
+
+      <div class="workflow-steps">
+        <div v-for="(step, index) in workflowSteps" :key="step.title" :class="{ done: step.done }">
+          <b>{{ index + 1 }}</b>
+          <strong>{{ step.title }}</strong>
+          <span>{{ step.desc }}</span>
+        </div>
+      </div>
+
+      <div class="source-grid">
+        <button
+          v-for="item in sourceTypes"
+          :key="item.value"
+          :class="{ active: personaSourceType === item.value, done: completedSourceTypes.has(item.value) }"
+          type="button"
+          @click="personaSourceType = item.value"
+        >
+          <strong>{{ item.short }}</strong>
+          <span>{{ item.guide }}</span>
+        </button>
+      </div>
+
+      <div class="intake-card">
+        <div class="intake-head">
+          <span>{{ selectedSource.label }}</span>
+          <strong>{{ selectedSource.guide }}</strong>
+        </div>
+        <input v-model="personaTitle" :placeholder="`资料标题：${selectedSource.label} / 客户公开资料`" />
+        <input v-model="personaSourceUrl" placeholder="来源链接：抖音主页、企查查页面、官网链接，可不填" />
+        <textarea v-model="personaContent" rows="6" :placeholder="selectedSource.placeholder"></textarea>
+        <div class="action-row">
+          <label class="file-drop">
+            {{ recognizingPersona ? '正在解析资料...' : '上传图片 / Word / PDF' }}
+            <input accept=".doc,.docx,.pdf,image/*" multiple type="file" @change="appendPersonaImages(($event.target as HTMLInputElement).files)" />
+          </label>
+          <button class="primary" type="button" @click="submitPersona">保存并分析</button>
+        </div>
+      </div>
+    </article>
+
+    <div class="signal-grid">
       <article>
         <span>核心诉求</span>
         <strong>{{ customer?.core_demand || analysis?.core_demand || '等待分析' }}</strong>
@@ -146,6 +302,33 @@ async function appendPersonaImages(files: FileList | null) {
       </article>
     </div>
 
+    <article class="panel profile-memory">
+      <div class="panel-head">
+        <strong>持续客户判断</strong>
+        <span>{{ customer?.persona_updated_at ? customer.persona_updated_at.slice(0, 10) : '长期更新' }}</span>
+      </div>
+      <MarkdownView v-if="customer?.persona_profile" :content="customer.persona_profile" />
+      <p v-else class="empty-text">客户判断不是一次性的。持续上传抖音、企查查、官网和聊天截图后，系统会逐步更新长期画像。</p>
+    </article>
+
+    <article class="panel">
+      <div class="panel-head">
+        <strong>资料沉淀记录</strong>
+        <span>{{ personaSources.length }} 条</span>
+      </div>
+      <div class="record-list">
+        <div v-for="source in personaSources" :key="source.id" class="record">
+          <div class="record-head">
+            <strong>{{ source.title }}</strong>
+            <span>{{ sourceTypeLabel(source.source_type) }}</span>
+          </div>
+          <a v-if="source.source_url" class="source-link" :href="source.source_url" rel="noreferrer" target="_blank">{{ source.source_url }}</a>
+          <MarkdownView :content="source.persona_summary || '已保存资料，等待分析补充。'" />
+        </div>
+        <p v-if="!personaSources.length" class="empty">暂无资料。先上传抖音主页或企查查摘要，作战卡会更准。</p>
+      </div>
+    </article>
+
     <article class="panel">
       <div class="panel-head">
         <strong>客户标签</strong>
@@ -159,71 +342,10 @@ async function appendPersonaImages(files: FileList | null) {
       </div>
     </article>
 
-    <article class="panel profile-memory">
-      <div class="panel-head">
-        <strong>持续客户判断</strong>
-        <span>{{ customer?.persona_updated_at ? customer.persona_updated_at.slice(0, 10) : '长期更新' }}</span>
-      </div>
-      <p v-if="customer?.persona_profile">{{ customer.persona_profile }}</p>
-      <p v-else class="empty-text">客户判断不是一次性的。后续持续上传朋友圈、聊天截图、自媒体内容后，系统会逐步更新这个客户的长期画像和跟进判断。</p>
-    </article>
-
-    <article class="panel">
-      <div class="panel-head">
-        <strong>客户人设资料</strong>
-        <span>抖音 / 企查查 / 公开资料</span>
-      </div>
-      <div class="source-type-grid">
-        <button
-          v-for="item in sourceTypes"
-          :key="item.value"
-          :class="{ active: personaSourceType === item.value }"
-          type="button"
-          @click="personaSourceType = item.value"
-        >
-          {{ item.label }}
-        </button>
-      </div>
-      <input v-model="personaTitle" placeholder="资料标题：抖音主页、企查查资料、官网介绍、线下观察" />
-      <input v-model="personaSourceUrl" placeholder="来源链接：抖音主页、企查查页面、官网链接，可不填" />
-      <textarea v-model="personaContent" rows="5" :placeholder="personaPlaceholder"></textarea>
-      <label class="image-upload">
-        {{ recognizingPersona ? '正在解析客户资料文件...' : '上传客户资料图片 / Word / PDF' }}
-        <input accept=".doc,.docx,.pdf,image/*" multiple type="file" @change="appendPersonaImages(($event.target as HTMLInputElement).files)" />
-      </label>
-      <button class="primary" type="button" @click="submitPersona">保存人设资料</button>
-
-      <div class="persona-ai-card">
-        <div class="persona-ai-head">
-          <strong>AI 对客户的实时判断</strong>
-          <span>{{ customer?.persona_updated_at ? customer.persona_updated_at.slice(0, 10) : '保存后生成' }}</span>
-        </div>
-        <MarkdownView
-          v-if="customer?.persona_profile"
-          :content="customer.persona_profile"
-        />
-        <p v-else>
-          保存客户朋友圈、聊天截图或公开资料后，这里会展示 AI 对客户性格、关注点、沟通偏好和跟进角度的判断，销售可以马上拿来参考。
-        </p>
-      </div>
-
-      <div class="record-list">
-        <div v-for="source in personaSources" :key="source.id" class="record">
-          <div class="record-head">
-            <strong>{{ source.title }}</strong>
-            <span>{{ sourceTypeLabel(source.source_type) }}</span>
-          </div>
-          <a v-if="source.source_url" class="source-link" :href="source.source_url" rel="noreferrer" target="_blank">{{ source.source_url }}</a>
-          <MarkdownView :content="source.persona_summary || '已保存资料，等待分析补充。'" />
-        </div>
-        <p v-if="!personaSources.length" class="empty">暂无该客户的人设资料</p>
-      </div>
-    </article>
-
     <article class="panel">
       <div class="panel-head">
         <strong>客户反馈复盘</strong>
-        <span>让您的销售助手更加智能好用</span>
+        <span>让销售助手越用越懂你</span>
       </div>
       <select v-model="selectedReply">
         <option value="">选择本次使用的话术</option>
@@ -256,60 +378,76 @@ async function appendPersonaImages(files: FileList | null) {
   padding: 14px;
 }
 
-.hero,
+.profile-hero,
+.status-strip,
+.battle-board,
+.workflow-panel,
 .panel,
-.insight-grid article {
-  border: 1px solid oklch(0.87 0.021 105 / 0.86);
-  border-radius: var(--radius-md);
+.signal-grid article {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
   background: var(--surface);
   box-shadow: var(--shadow-soft);
 }
 
-.hero {
+.profile-hero {
   position: relative;
   overflow: hidden;
   display: grid;
-  grid-template-columns: 1fr 92px;
+  grid-template-columns: 1fr 94px;
   align-items: center;
-  gap: 14px;
-  padding: 18px;
-  color: var(--ink);
+  gap: 16px;
+  padding: 20px;
   background:
-    radial-gradient(circle at 88% 10%, oklch(0.9 0.085 82 / 0.8), transparent 160px),
-    linear-gradient(135deg, oklch(1 0.004 95), oklch(0.92 0.052 171));
+    linear-gradient(135deg, oklch(1 0.004 95), oklch(0.955 0.026 178) 62%, oklch(0.985 0.032 86));
 }
 
-.hero::after {
+.profile-hero::before {
   content: "";
   position: absolute;
-  right: -44px;
-  bottom: -80px;
-  width: 190px;
-  height: 190px;
-  border: 1px solid oklch(0.74 0.052 175 / 0.32);
+  right: -42px;
+  top: -54px;
+  width: 160px;
+  height: 160px;
+  border: 28px solid oklch(0.78 0.07 178 / 0.14);
   border-radius: 50%;
 }
 
-.hero span {
+.hero-copy {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 6px;
+}
+
+.hero-copy span,
+.board-head span,
+.signal-grid span,
+.panel-head span,
+.intake-head span,
+.status-strip span,
+.battle-card span {
   color: var(--brand-strong);
   font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.04em;
+  font-weight: 950;
+  letter-spacing: 0.08em;
 }
 
-.hero strong {
-  display: block;
-  margin-top: 4px;
-  font-size: 22px;
-  letter-spacing: -0.04em;
-  line-height: 1.2;
+.hero-copy strong {
+  color: var(--ink);
+  font-size: 24px;
+  letter-spacing: -0.05em;
+  line-height: 1.1;
 }
 
-.hero p {
-  margin: 8px 0 0;
+.hero-copy p,
+.battle-card p,
+.empty-text,
+.record p {
+  margin: 0;
   color: var(--muted);
   font-size: 13px;
-  line-height: 1.55;
+  line-height: 1.6;
 }
 
 .score-ring {
@@ -318,69 +456,253 @@ async function appendPersonaImages(files: FileList | null) {
   display: grid;
   place-items: center;
   align-content: center;
-  width: 86px;
-  height: 86px;
+  width: 88px;
+  height: 88px;
   border-radius: 50%;
   background:
     radial-gradient(circle at center, white 58%, transparent 59%),
-    conic-gradient(var(--brand) var(--score), oklch(0.89 0.02 105) 0);
-  box-shadow: 0 12px 28px oklch(0.34 0.095 184 / 0.14);
+    conic-gradient(var(--brand) var(--score), oklch(0.9 0.018 105) 0);
+  box-shadow: 0 14px 28px oklch(0.34 0.095 184 / 0.14);
 }
 
 .score-ring strong {
   color: var(--brand-strong);
-  font-size: 24px;
+  font-size: 26px;
 }
 
 .score-ring span {
-  margin-top: 1px;
   color: var(--muted);
   font-size: 11px;
   font-weight: 900;
 }
 
-.insight-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.insight-grid article,
-.panel {
+.status-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   padding: 14px;
+  background: linear-gradient(135deg, white, oklch(0.972 0.028 86));
 }
 
-.insight-grid span,
-.panel-head span {
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.03em;
+.status-strip div {
+  display: grid;
+  gap: 4px;
 }
 
-.insight-grid strong {
-  display: block;
-  margin-top: 6px;
+.status-strip strong {
   color: var(--ink);
-  font-size: 15px;
-  line-height: 1.45;
+  font-size: 14px;
 }
 
+.status-strip button,
+.primary,
+.battle-card button {
+  min-height: 38px;
+  border: 0;
+  border-radius: 14px;
+  color: white;
+  background: linear-gradient(135deg, var(--brand-strong), var(--brand));
+  font-size: 12px;
+  font-weight: 950;
+  box-shadow: 0 12px 24px oklch(0.34 0.095 184 / 0.18);
+}
+
+.status-strip button {
+  min-width: 96px;
+  padding: 0 12px;
+}
+
+.status-strip .secondary {
+  color: var(--brand-strong);
+  border: 1px solid var(--line-strong);
+  background: var(--brand-soft);
+  box-shadow: none;
+}
+
+.status-strip button:disabled {
+  opacity: 0.5;
+}
+
+.battle-board,
+.workflow-panel,
 .panel {
   display: grid;
+  gap: 14px;
+  padding: 15px;
+}
+
+.board-head,
+.panel-head,
+.record-head,
+.intake-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
   gap: 12px;
 }
 
-.panel-head {
-  display: flex;
-  justify-content: space-between;
+.board-head div,
+.intake-head {
+  display: grid;
+  gap: 4px;
+}
+
+.board-head strong,
+.panel-head strong,
+.intake-head strong {
+  color: var(--ink);
+  font-size: 16px;
+  letter-spacing: -0.03em;
+}
+
+.board-head em {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  border-radius: 999px;
+  color: var(--muted);
+  background: var(--surface-soft);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.battle-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 
-.panel-head strong {
+.battle-card {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  gap: 9px;
+  min-height: 152px;
+  padding: 14px;
+  border: 1px solid oklch(0.87 0.02 105);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(180deg, white, oklch(0.983 0.012 104));
+}
+
+.battle-card::after {
+  content: "";
+  position: absolute;
+  right: -30px;
+  bottom: -42px;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: oklch(0.88 0.06 178 / 0.38);
+}
+
+.battle-card strong {
+  position: relative;
+  z-index: 1;
   color: var(--ink);
-  font-size: 16px;
-  letter-spacing: -0.02em;
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.battle-card p,
+.battle-card button {
+  position: relative;
+  z-index: 1;
+}
+
+.battle-card button {
+  width: fit-content;
+  min-height: 32px;
+  padding: 0 12px;
+  box-shadow: none;
+}
+
+.workflow-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.workflow-steps div {
+  display: grid;
+  gap: 5px;
+  padding: 11px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: oklch(0.985 0.01 105);
+}
+
+.workflow-steps .done {
+  border-color: oklch(0.78 0.06 178);
+  background: var(--brand-soft);
+}
+
+.workflow-steps b {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  color: white;
+  background: var(--brand);
+  font-size: 12px;
+}
+
+.workflow-steps strong {
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.workflow-steps span,
+.source-grid span {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.source-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.source-grid button {
+  display: grid;
+  gap: 5px;
+  min-height: 76px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 10px;
+  color: var(--muted);
+  background: white;
+  text-align: left;
+}
+
+.source-grid strong {
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.source-grid .active {
+  border-color: var(--brand);
+  background: linear-gradient(180deg, var(--brand-soft), white);
+  box-shadow: inset 0 0 0 1px oklch(0.79 0.058 178 / 0.28);
+}
+
+.source-grid .done strong::after {
+  content: " 已补";
+  color: var(--brand-strong);
+  font-size: 11px;
+}
+
+.intake-card {
+  display: grid;
+  gap: 10px;
+  padding: 13px;
+  border: 1px solid oklch(0.86 0.02 105);
+  border-radius: var(--radius-md);
+  background: oklch(0.992 0.006 105);
 }
 
 select,
@@ -391,18 +713,58 @@ textarea {
   border-radius: 14px;
   padding: 11px 12px;
   color: var(--ink);
-  background: oklch(1 0.004 95 / 0.78);
+  background: white;
   font-size: 13px;
   line-height: 1.55;
   box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.78);
 }
 
 select {
-  height: 40px;
+  height: 42px;
 }
 
 textarea {
   resize: vertical;
+}
+
+.action-row {
+  display: grid;
+  grid-template-columns: 1fr 128px;
+  gap: 9px;
+}
+
+.file-drop {
+  display: grid;
+  place-items: center;
+  min-height: 38px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 14px;
+  color: var(--brand-strong);
+  background: var(--brand-soft);
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.file-drop input {
+  display: none;
+}
+
+.signal-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.signal-grid article {
+  padding: 14px;
+}
+
+.signal-grid strong {
+  display: block;
+  margin-top: 7px;
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.45;
 }
 
 .tag-cloud {
@@ -419,7 +781,7 @@ textarea {
   color: var(--brand-strong);
   background: var(--brand-soft);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 850;
 }
 
 .tag-cloud em,
@@ -429,100 +791,6 @@ textarea {
   font-size: 13px;
 }
 
-.image-upload {
-  display: grid;
-  place-items: center;
-  min-height: 40px;
-  border: 1px dashed oklch(0.76 0.055 175);
-  border-radius: 14px;
-  color: var(--brand-strong);
-  background:
-    linear-gradient(135deg, oklch(0.96 0.04 171), oklch(0.98 0.028 84));
-  font-size: 12px;
-  font-weight: 900;
-}
-
-.source-type-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.source-type-grid button {
-  min-height: 34px;
-  border: 1px solid oklch(0.86 0.021 105);
-  border-radius: 14px;
-  color: var(--muted);
-  background: oklch(1 0.004 95 / 0.8);
-  font-size: 12px;
-  font-weight: 900;
-  transition: color 0.18s ease, border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
-}
-
-.source-type-grid .active {
-  color: var(--brand-strong);
-  border-color: oklch(0.78 0.055 175);
-  background: var(--brand-soft);
-}
-
-.image-upload input {
-  display: none;
-}
-
-.primary {
-  height: 39px;
-  border: 0;
-  border-radius: 14px;
-  color: white;
-  background:
-    radial-gradient(circle at 88% 8%, var(--accent), transparent 44px),
-    linear-gradient(135deg, var(--brand-strong), var(--brand));
-  font-weight: 900;
-  box-shadow: 0 12px 24px oklch(0.34 0.095 184 / 0.18);
-}
-
-.status-panel {
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  border-color: oklch(0.83 0.05 84 / 0.72);
-  background:
-    linear-gradient(135deg, oklch(1 0.004 95), oklch(0.975 0.03 84));
-}
-
-.status-panel strong {
-  display: block;
-  color: var(--ink);
-  font-size: 15px;
-}
-
-.status-panel p {
-  margin: 5px 0 0;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.55;
-}
-
-.status-panel button {
-  min-width: 96px;
-  min-height: 36px;
-  border: 0;
-  border-radius: 14px;
-  color: white;
-  background: linear-gradient(135deg, var(--brand-strong), var(--brand));
-  font-size: 12px;
-  font-weight: 900;
-}
-
-.status-panel button:disabled {
-  opacity: 0.5;
-}
-
-.status-panel .secondary {
-  color: var(--brand-strong);
-  border: 1px solid oklch(0.78 0.055 175);
-  background: var(--brand-soft);
-}
-
 .outcome {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -530,103 +798,45 @@ textarea {
 }
 
 .outcome button {
-  height: 34px;
-  border: 1px solid oklch(0.86 0.021 105);
+  height: 35px;
+  border: 1px solid var(--line);
   border-radius: 14px;
   color: var(--muted);
-  background: oklch(1 0.004 95 / 0.8);
-  font-weight: 800;
+  background: white;
+  font-weight: 850;
 }
 
 .outcome .active {
   color: var(--brand-strong);
-  border-color: oklch(0.78 0.055 175);
+  border-color: var(--line-strong);
   background: var(--brand-soft);
 }
 
 .record-list {
   display: grid;
-  gap: 8px;
-}
-
-.persona-ai-card {
-  position: relative;
-  overflow: hidden;
-  display: grid;
-  gap: 8px;
-  padding: 13px;
-  border: 1px solid oklch(0.78 0.055 175);
-  border-radius: var(--radius-md);
-  background:
-    radial-gradient(circle at 96% 0%, oklch(0.9 0.08 84 / 0.62), transparent 140px),
-    linear-gradient(135deg, var(--brand-soft), white 76%);
-}
-
-.persona-ai-card::before {
-  content: "AI";
-  position: absolute;
-  right: 13px;
-  bottom: -8px;
-  color: oklch(0.72 0.055 175 / 0.18);
-  font-size: 56px;
-  font-weight: 950;
-  letter-spacing: -0.08em;
-}
-
-.persona-ai-head,
-.record-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.persona-ai-head strong,
-.record-head strong {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--ink);
-  font-size: 13px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.persona-ai-head span,
-.record-head span {
-  flex: 0 0 auto;
-  color: var(--brand-strong);
-  font-size: 12px;
-  font-weight: 900;
-}
-
-.persona-ai-card p {
-  margin: 0;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.55;
+  gap: 9px;
 }
 
 .record {
   display: grid;
-  gap: 6px;
-  padding: 11px;
+  gap: 7px;
+  padding: 12px;
   border: 1px solid oklch(0.88 0.018 105);
-  border-radius: 14px;
-  background: oklch(0.978 0.014 104);
+  border-radius: 15px;
+  background: oklch(0.985 0.01 105);
 }
 
-.record p,
-.empty,
-.profile-memory p {
-  margin: 0;
-  line-height: 1.55;
+.record-head strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.record p,
-.profile-memory p {
-  color: var(--muted);
-  font-size: 12px;
-  white-space: pre-line;
+.record-head span {
+  flex: 0 0 auto;
 }
 
 .source-link {
@@ -634,23 +844,36 @@ textarea {
   overflow: hidden;
   color: var(--brand-strong);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 850;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .empty {
+  margin: 0;
   padding: 12px;
   text-align: center;
 }
 
-.empty-text {
-  color: var(--muted);
+@media (max-width: 760px) {
+  .battle-grid,
+  .workflow-steps {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .source-grid {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 @media (max-width: 560px) {
-  .hero {
+  .profile-hero,
+  .status-strip {
     grid-template-columns: 1fr;
+  }
+
+  .status-strip {
+    display: grid;
   }
 
   .score-ring {
@@ -658,11 +881,14 @@ textarea {
     height: 78px;
   }
 
-  .insight-grid {
+  .battle-grid,
+  .workflow-steps,
+  .signal-grid,
+  .action-row {
     grid-template-columns: 1fr;
   }
 
-  .status-panel {
+  .source-grid {
     grid-template-columns: 1fr;
   }
 }

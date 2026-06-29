@@ -20,7 +20,7 @@ import { useSidebarStore } from './stores/sidebar'
 const store = useSidebarStore()
 const active = ref(0)
 const refreshing = ref(false)
-const navItems = ['话术', '客户', '全景', '跟进', '总结', 'IP', '我的']
+const navItems = ['作战', '客户', '画像', '跟进', '复盘', '内容', '我的']
 
 const guideReady = computed(() => Boolean(store.user?.sales_guide))
 
@@ -64,7 +64,7 @@ async function addFeedback(payload: {
   await runAction(() => store.addFeedback(payload), '复盘已保存', 'AI 正在复盘客户反馈，让销售助手更懂这类场景...')
 }
 
-async function addPersona(payload: { title: string; content: string; source_type: string }) {
+async function addPersona(payload: { title: string; content: string; source_type: string; source_url?: string }) {
   await runAction(() => store.addPersonaSource(payload), '客户人设资料已保存', 'AI 正在更新客户长期判断，不会只凭单次资料下结论...')
 }
 
@@ -150,8 +150,8 @@ onMounted(() => {
       <header class="workspace-bar">
         <div>
           <span>Sales Copilot</span>
-          <strong>销冠副驾</strong>
-          <em>清爽作战台 · 每次沟通都有下一步</em>
+          <strong>销冠作战台</strong>
+          <em>客户画像 · 话术策略 · 跟进复盘</em>
         </div>
         <button type="button" @click="store.logout()">退出</button>
       </header>

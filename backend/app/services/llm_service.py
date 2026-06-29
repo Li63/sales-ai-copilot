@@ -100,6 +100,10 @@ PERSONA_ANALYSIS_PROMPT = """你是客户人设分析师，也是懂成交的一
 - follow_angle：下一次可用的跟进角度，80 字以内。
 - risk_warning：销售需要避免的动作或话术，80 字以内。
 - sales_tip：一句给销售的实战提醒，80 字以内。
+- deal_opportunity：从资料里能看出的潜在成交机会，80 字以内。
+- customer_pain：客户可能正在意或害怕的痛点，80 字以内。
+- follow_strategy：下一轮跟进策略，包含节奏和切入点，80 字以内。
+- icebreaker：一条销售可以直接发出的低压破冰话术，100 字以内。
 """
 
 
@@ -453,7 +457,11 @@ class LLMService:
             "沟通方式：先围绕资料里出现的真实关注点开口，少用模板化寒暄。\n"
             "跟进角度：用一个低压问题确认客户当前是否还在关注这件事。\n"
             "风险提醒：不要把单次资料当成最终结论，也不要直接推产品。\n"
-            "销售提醒：先让客户感觉你看懂了他，再轻轻推进下一步。"
+            "销售提醒：先让客户感觉你看懂了他，再轻轻推进下一步。\n"
+            "成交机会：资料里出现的业务变化、内容方向或公开动作，可能是切入合作的窗口。\n"
+            "客户痛点：客户可能在意效果、风险、可信证据或交付稳定性，需先验证再推进。\n"
+            "跟进策略：先用资料里的真实线索破冰，再问一个低压问题确认当前优先级。\n"
+            "破冰话术：我看到您最近在关注这个方向，我不确定现在是不是重点，想先和您确认一个小问题。"
         )
 
     def _format_persona_analysis(self, parsed: dict[str, Any]) -> str:
@@ -466,6 +474,10 @@ class LLMService:
             ("跟进角度", parsed.get("follow_angle", "")),
             ("风险提醒", parsed.get("risk_warning", "")),
             ("销售提醒", parsed.get("sales_tip", "")),
+            ("成交机会", parsed.get("deal_opportunity", "")),
+            ("客户痛点", parsed.get("customer_pain", "")),
+            ("跟进策略", parsed.get("follow_strategy", "")),
+            ("破冰话术", parsed.get("icebreaker", "")),
         ]
         return "\n".join(f"{label}：{str(value).strip()[:140]}" for label, value in lines if str(value).strip())
 
