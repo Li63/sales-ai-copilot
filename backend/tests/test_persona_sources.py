@@ -96,6 +96,70 @@ def test_persona_source_add_accepts_douyin_source_url():
         app.dependency_overrides.clear()
 
 
+def test_persona_source_add_infers_douyin_content_from_share_text():
+    client, session_local = _client()
+    try:
+        share_text = (
+            "2.56 复制打开抖音，看看【金林食品机械设备厂家的作品】"
+            "瓜果蔬菜萝卜切条机 # 萝卜切条机# 果蔬推条机#... "
+            "https://v.douyin.com/VhrrmUHw3SM/ 10/01 kPx:/ m@Q.XM :9pm"
+        )
+        response = client.post(
+            "/api/persona/source/add",
+            json={
+                "sales_userid": "user-1",
+                "external_userid": "external-1",
+                "source_type": "manual",
+                "title": "抖音分享",
+                "content": share_text,
+            },
+        )
+
+        assert response.status_code == 200
+        payload = response.json()["data"]
+        assert payload["source_type"] == "douyin_content"
+        assert payload["source_url"] == "https://v.douyin.com/VhrrmUHw3SM/"
+
+        db = session_local()
+        source = db.query(PersonaSource).one()
+        assert "平台：抖音" in source.content
+        assert "账号：金林食品机械设备厂家" in source.content
+        assert "作品线索：瓜果蔬菜萝卜切条机" in source.content
+        assert "标签：萝卜切条机、果蔬推条机" in source.content
+        db.close()
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_persona_source_add_accepts_url_only_as_pending_evidence():
+    client, session_local = _client()
+    try:
+        response = client.post(
+            "/api/persona/source/add",
+            json={
+                "sales_userid": "user-1",
+                "external_userid": "external-1",
+                "source_type": "manual",
+                "source_url": "https://v.douyin.com/VhrrmUHw3SM/",
+                "title": "抖音短链",
+                "content": "",
+            },
+        )
+
+        assert response.status_code == 200
+        payload = response.json()["data"]
+        assert payload["source_type"] == "douyin_content"
+        assert payload["source_url"] == "https://v.douyin.com/VhrrmUHw3SM/"
+
+        db = session_local()
+        source = db.query(PersonaSource).one()
+        assert "用户只提供了链接" in source.content
+        assert "不能当成已抓取完整页面" in source.content
+        db.close()
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_persona_source_add_normalizes_unknown_source_type():
     client, _ = _client()
     try:

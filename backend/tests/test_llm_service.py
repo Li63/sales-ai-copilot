@@ -160,3 +160,30 @@ async def test_llm_persona_payload_includes_source_type_and_url():
     assert "经营线索" in result
     assert "内容定位" in result
     assert "决策逻辑" in result
+
+
+@pytest.mark.asyncio
+async def test_llm_persona_formats_enterprise_battle_fields():
+    async def ok_client(payload):
+        return {
+            "choices": [
+                {
+                    "message": {
+                        "content": '{"summary":"客户是食品机械设备厂家。","enterprise_positioning":"面向果蔬加工客户销售切条切片设备。","strength_evidence":"以设备实拍、工厂身份和细分产品标签建立可信度。","purchase_motivation":"可能更关注获客线索、设备询盘和经销合作。","deal_opportunity":"可从萝卜切条机细分场景切入，聊批量客户需求。","customer_pain":"需要证明设备稳定、效率和售后能力。","follow_strategy":"先围绕视频里的具体设备场景提问，再补同行案例。","icebreaker":"我看到您在发萝卜切条机这类细分设备，想请教下现在客户更关心效率还是售后稳定？"}'
+                    }
+                }
+            ]
+        }
+
+    service = LLMService(api_key="x", base_url="https://example.test", model="deepseek-chat", http_client=ok_client)
+
+    result = await service.analyze_persona_source(
+        "平台：抖音\n账号：金林食品机械设备厂家\n作品线索：瓜果蔬菜萝卜切条机\n标签：萝卜切条机、果蔬推条机",
+        source_type="douyin_content",
+        source_url="https://v.douyin.com/VhrrmUHw3SM/",
+    )
+
+    assert "企业定位：面向果蔬加工客户销售切条切片设备。" in result
+    assert "实力证据：以设备实拍、工厂身份和细分产品标签建立可信度。" in result
+    assert "采购动机：可能更关注获客线索、设备询盘和经销合作。" in result
+    assert "破冰话术：我看到您在发萝卜切条机这类细分设备" in result

@@ -87,16 +87,21 @@ PERSONA_ANALYSIS_PROMPT = """你是客户人设分析师，也是懂成交的一
 1. 严格基于输入资料，不编造客户身份、资产、关系、意向。
 2. 先识别资料来源类型：douyin_profile、douyin_content、qichacha、website、manual。不同来源要用不同分析角度。
 3. 抖音资料重点看内容定位、表达风格、评论/作品暴露出的关注点；企查查资料重点看经营范围、业务阶段、风险线索、组织变化。
-4. 所有判断都必须表达为“销售假设”，不能当成已验证事实。
-5. 语言要像销售教练在提醒销售，务实、短句、可执行，不要像 AI 报告。
-6. 输出标准 JSON，不要 markdown 代码块。
+4. 朋友圈/销售观察重点看真实性格、价值观、信任关系和沟通偏好；聊天记录重点看已经验证过的需求、预算、异议和成交阶段。
+5. 所有判断都必须表达为“销售假设”，不能当成已验证事实。
+6. 语言要像销售教练在提醒销售，务实、短句、可执行，不要像 AI 报告。
+7. 对企业客户要做全方位解析：企业定位、实力证据、账号/人设、采购动机、成交机会、风险提醒、跟进策略、破冰话术。
+8. 输出标准 JSON，不要 markdown 代码块。
 
 字段：
 - summary：客户资料透露出的核心判断，80 字以内。
+- enterprise_positioning：企业做什么、卖给谁、处于什么业务场景，90 字以内。
+- strength_evidence：资料里能证明企业实力或可信度的证据，90 字以内；没有证据要说证据不足。
 - business_clues：经营状态、业务阶段或组织变化线索，80 字以内。
 - content_positioning：抖音/公开内容呈现出的定位、表达风格或人设线索，80 字以内。
 - communication_style：客户可能更接受的沟通方式，80 字以内。
 - decision_logic：客户可能的判断标准或决策逻辑，80 字以内。
+- purchase_motivation：客户可能的采购/合作动机或增长诉求，80 字以内。
 - follow_angle：下一次可用的跟进角度，80 字以内。
 - risk_warning：销售需要避免的动作或话术，80 字以内。
 - sales_tip：一句给销售的实战提醒，80 字以内。
@@ -451,9 +456,12 @@ class LLMService:
         return (
             f"资料来源：{source_type}{f'（{source_url}）' if source_url else ''}\n"
             f"核心判断：客户公开资料显示：{clue}\n"
+            "企业定位：资料有限，先判断其公开业务方向和服务对象，不能扩大解读。\n"
+            "实力证据：当前只看到用户提供的资料线索，企业规模、产能、资质仍需企查查或官网验证。\n"
             "经营线索：资料有限，先把它作为销售假设，不直接下结论。\n"
             "内容定位：若来自抖音或公开主页，优先观察其表达风格、案例主题和评论里的真实顾虑。\n"
             "决策逻辑：先用资料里的真实线索确认客户现在是否仍关注这件事。\n"
+            "采购动机：可能围绕获客、效率、交付稳定或风险降低，但需要进一步确认。\n"
             "沟通方式：先围绕资料里出现的真实关注点开口，少用模板化寒暄。\n"
             "跟进角度：用一个低压问题确认客户当前是否还在关注这件事。\n"
             "风险提醒：不要把单次资料当成最终结论，也不要直接推产品。\n"
@@ -467,10 +475,13 @@ class LLMService:
     def _format_persona_analysis(self, parsed: dict[str, Any]) -> str:
         lines = [
             ("核心判断", parsed.get("summary", "")),
+            ("企业定位", parsed.get("enterprise_positioning", "")),
+            ("实力证据", parsed.get("strength_evidence", "")),
             ("经营线索", parsed.get("business_clues", "")),
             ("内容定位", parsed.get("content_positioning", "")),
             ("沟通方式", parsed.get("communication_style", "")),
             ("决策逻辑", parsed.get("decision_logic", "")),
+            ("采购动机", parsed.get("purchase_motivation", "")),
             ("跟进角度", parsed.get("follow_angle", "")),
             ("风险提醒", parsed.get("risk_warning", "")),
             ("销售提醒", parsed.get("sales_tip", "")),

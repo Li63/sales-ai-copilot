@@ -29,6 +29,7 @@ const personaContent = ref('')
 const personaSourceType = ref<'douyin_profile' | 'douyin_content' | 'qichacha' | 'website' | 'manual'>('douyin_profile')
 const personaSourceUrl = ref('')
 const recognizingPersona = ref(false)
+const showSourceRecords = ref(false)
 
 const sourceTypes = [
   {
@@ -106,6 +107,26 @@ const sourceProgress = computed(() => {
 
 const battleCards = computed(() => [
   {
+    label: '企业定位',
+    title: pickInsight(['企业定位', '核心判断'], props.customer?.core_demand || props.analysis?.core_demand || '等待资料判断这家公司做什么、卖给谁、处于什么业务场景'),
+    hint: '先判断业务方向和服务对象，不扩大解读。',
+  },
+  {
+    label: '实力证据',
+    title: pickInsight(['实力证据', '经营线索'], '等待企查查、官网、工厂/案例截图补充企业实力证据'),
+    hint: '区分真实证据和销售假设，避免过度判断。',
+  },
+  {
+    label: '账号/人设',
+    title: pickInsight(['内容定位', '沟通方式'], '等待抖音、朋友圈或公开内容判断表达风格'),
+    hint: '抖音偏账号定位，朋友圈偏真实性格。',
+  },
+  {
+    label: '采购动机',
+    title: pickInsight(['采购动机', '决策逻辑'], props.analysis?.core_demand || '等待聊天记录或公开动作验证真实动机'),
+    hint: '判断客户为什么可能需要我们，而不是只看表面资料。',
+  },
+  {
     label: '成交机会',
     title: pickInsight(['成交机会', '跟进角度', '决策逻辑', '核心判断'], props.analysis?.next_action || props.customer?.core_demand || '等待更多资料判断成交窗口'),
     hint: '从客户公开动作里找到可切入的合作窗口。',
@@ -140,6 +161,30 @@ function pickInsight(labels: string[], fallback: string) {
   return fallback || '等待 AI 结合更多资料继续拆解'
 }
 
+function extractFirstUrl(text: string) {
+  return text.match(/https?:\/\/[^\s，。；;）)]+/)?.[0]?.replace(/[，。；;、,.!?！？）)]$/, '') || ''
+}
+
+function inferSourceType(text: string, url: string): typeof personaSourceType.value {
+  const haystack = `${url}\n${text}`.toLowerCase()
+  if (haystack.includes('douyin.com') || text.includes('复制打开抖音') || text.includes('抖音')) {
+    if (text.includes('主页') && !text.includes('作品') && !text.includes('#')) return 'douyin_profile'
+    return 'douyin_content'
+  }
+  if (haystack.includes('qcc.com') || text.includes('企查查') || text.includes('天眼查')) return 'qichacha'
+  if (url) return 'website'
+  return 'manual'
+}
+
+function syncSourceTypeFromInput() {
+  const combined = `${personaTitle.value}\n${personaSourceUrl.value}\n${personaContent.value}`
+  const url = personaSourceUrl.value.trim() || extractFirstUrl(combined)
+  personaSourceType.value = inferSourceType(combined, url)
+  if (!personaSourceUrl.value.trim() && url) {
+    personaSourceUrl.value = url
+  }
+}
+
 async function copyCard(text: string) {
   const copied = await copyPlainText(text)
   showToast(copied ? '已复制作战话术' : '复制失败，请长按文字复制')
@@ -162,8 +207,9 @@ function submitFeedback() {
 }
 
 function submitPersona() {
-  if (!personaContent.value.trim()) {
-    showToast('请粘贴客户资料，或上传 Word/PDF/图片后补充关键文字')
+  syncSourceTypeFromInput()
+  if (!personaContent.value.trim() && !personaSourceUrl.value.trim()) {
+    showToast('请粘贴客户资料、抖音分享文案、企查查摘要，或上传 Word/PDF/图片')
     return
   }
   emit('addPersona', {
@@ -183,6 +229,20 @@ async function appendPersonaImages(files: FileList | null) {
   try {
     const text = await store.extractFiles('persona', files)
     personaContent.value = [personaContent.value.trim(), text.trim()].filter(Boolean).join('\n\n')
+    syncSourceTypeFromInput()
+    if (personaContent.value.trim() || personaSourceUrl.value.trim()) {
+      emit('addPersona', {
+        title: personaTitle.value.trim() || `${selectedSource.value.label}图片资料`,
+        source_type: personaSourceType.value,
+        source_url: personaSourceUrl.value.trim(),
+        content: personaContent.value.trim(),
+      })
+      personaTitle.value = ''
+      personaSourceUrl.value = ''
+      personaContent.value = ''
+      showToast(`已解析 ${files.length} 个文件，正在自动分析`)
+      return
+    }
     showToast(`已解析 ${files.length} 个客户资料文件`)
   } catch (error) {
     showToast(error instanceof Error ? error.message : '文件解析失败')
@@ -196,9 +256,9 @@ async function appendPersonaImages(files: FileList | null) {
   <section class="panorama">
     <div class="profile-hero">
       <div class="hero-copy">
-        <span>客户作战全景</span>
+        <span>客户情报中枢</span>
         <strong>{{ customer?.nickname || '请选择客户' }}</strong>
-        <p>先把抖音主页、企查查资料和销售观察补齐，再让 AI 拆成销冠能直接执行的成交打法。</p>
+        <p>把抖音、朋友圈、企查查、官网和聊天记录分层吸收，最后沉淀成企业全方位解析和可执行打法。</p>
       </div>
       <div class="score-ring" :style="scoreStyle">
         <strong>{{ score }}</strong>
@@ -224,8 +284,8 @@ async function appendPersonaImages(files: FileList | null) {
     <article class="battle-board">
       <div class="board-head">
         <div>
-          <span>AI 销冠作战卡</span>
-          <strong>把画像拆成下一步打法</strong>
+          <span>企业全方位解析</span>
+          <strong>先看真实证据，再给销售打法</strong>
         </div>
         <em>{{ customer?.persona_updated_at ? customer.persona_updated_at.slice(0, 10) : '等待资料' }}</em>
       </div>
@@ -242,8 +302,8 @@ async function appendPersonaImages(files: FileList | null) {
     <article class="workflow-panel">
       <div class="board-head">
         <div>
-          <span>客户资料上传工作流</span>
-          <strong>抖音链接 + 企查查 + 文件资料</strong>
+          <span>投喂客户情报</span>
+          <strong>粘贴链接/分享文案，或上传截图资料</strong>
         </div>
         <em>资料完成度 {{ sourceProgress }}</em>
       </div>
@@ -271,15 +331,20 @@ async function appendPersonaImages(files: FileList | null) {
 
       <div class="intake-card">
         <div class="intake-head">
-          <span>{{ selectedSource.label }}</span>
-          <strong>{{ selectedSource.guide }}</strong>
+          <span>系统已识别：{{ selectedSource.label }}</span>
+          <strong>抖音看账号和内容，企查查看企业真实情况，朋友圈看性格和信任偏好</strong>
         </div>
-        <input v-model="personaTitle" :placeholder="`资料标题：${selectedSource.label} / 客户公开资料`" />
-        <input v-model="personaSourceUrl" placeholder="来源链接：抖音主页、企查查页面、官网链接，可不填" />
-        <textarea v-model="personaContent" rows="6" :placeholder="selectedSource.placeholder"></textarea>
+        <input v-model="personaTitle" :placeholder="`资料标题：${selectedSource.label} / 客户公开资料`" @input="syncSourceTypeFromInput" />
+        <input v-model="personaSourceUrl" placeholder="来源链接：抖音主页、企查查页面、官网链接，可不填" @input="syncSourceTypeFromInput" />
+        <textarea
+          v-model="personaContent"
+          rows="6"
+          :placeholder="`${selectedSource.placeholder}\n\n也可以直接粘贴抖音分享文案，例如：复制打开抖音，看看【某某厂家的作品】... https://v.douyin.com/...`"
+          @input="syncSourceTypeFromInput"
+        ></textarea>
         <div class="action-row">
           <label class="file-drop">
-            {{ recognizingPersona ? '正在解析资料...' : '上传图片 / Word / PDF' }}
+            {{ recognizingPersona ? '正在解析并自动分析...' : '上传并自动分析图片 / Word / PDF' }}
             <input accept=".doc,.docx,.pdf,image/*" multiple type="file" @change="appendPersonaImages(($event.target as HTMLInputElement).files)" />
           </label>
           <button class="primary" type="button" @click="submitPersona">保存并分析</button>
@@ -313,10 +378,17 @@ async function appendPersonaImages(files: FileList | null) {
 
     <article class="panel">
       <div class="panel-head">
-        <strong>资料沉淀记录</strong>
-        <span>{{ personaSources.length }} 条</span>
+        <strong>已吸收情报</strong>
+        <button class="ghost-toggle" type="button" @click="showSourceRecords = !showSourceRecords">
+          {{ showSourceRecords ? '收起原始资料' : `查看原始资料 ${personaSources.length} 条` }}
+        </button>
       </div>
-      <div class="record-list">
+      <div class="coverage-row">
+        <span v-for="item in sourceTypes" :key="item.value" :class="{ active: completedSourceTypes.has(item.value) }">
+          {{ item.label }} {{ completedSourceTypes.has(item.value) ? '已吸收' : '待补充' }}
+        </span>
+      </div>
+      <div v-if="showSourceRecords" class="record-list">
         <div v-for="source in personaSources" :key="source.id" class="record">
           <div class="record-head">
             <strong>{{ source.title }}</strong>
@@ -815,6 +887,38 @@ textarea {
 .record-list {
   display: grid;
   gap: 9px;
+}
+
+.ghost-toggle {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 10px;
+  color: var(--brand-strong);
+  background: white;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.coverage-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.coverage-row span {
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  background: oklch(0.985 0.01 105);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.coverage-row .active {
+  color: var(--brand-strong);
+  border-color: var(--line-strong);
+  background: var(--brand-soft);
 }
 
 .record {

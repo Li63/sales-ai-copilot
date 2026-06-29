@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import io
+import re
 import zipfile
 from datetime import datetime, timedelta
 from typing import Annotated
@@ -143,6 +144,8 @@ SUPPORTED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 SUPPORTED_TEXT_TYPES = {"text/plain", "text/markdown", "text/csv", "application/json"}
 SUPPORTED_DOCUMENT_SUFFIXES = {".pdf", ".docx", ".doc"}
 PERSONA_SOURCE_TYPES = {"douyin_profile", "douyin_content", "qichacha", "website", "manual"}
+URL_PATTERN = re.compile(r"https?://[^\s，。；;）)]+")
+DOUYIN_URL_PATTERN = re.compile(r"https?://(?:v\.douyin\.com|www\.douyin\.com|www\.iesdouyin\.com|iesdouyin\.com)/[^\s，。；;）)]+")
 
 
 def _optional_current_user(
@@ -827,17 +830,20 @@ async def persona_source_add(
 ):
     active_sales_userid = current_user.sales_userid if current_user else body.sales_userid
     customer = CustomerService(db).get_or_create_customer(active_sales_userid, body.external_userid)
-    content = body.content.strip()[:7000]
+    title, content, source_type, source_url = _prepare_persona_source_input(
+        body.title,
+        body.content,
+        body.source_type,
+        body.source_url,
+    )
     if not content:
-        return {"code": 1, "message": "请填写客户资料内容", "data": {}}
-    source_type = _normalize_persona_source_type(body.source_type)
-    source_url = (body.source_url or "").strip()[:500]
+        return {"code": 1, "message": "请填写客户资料内容，或至少提供一个可识别的资料链接", "data": {}}
     source = PersonaSource(
         customer_id=customer.id,
         sales_userid=active_sales_userid,
         external_userid=body.external_userid,
         source_type=source_type,
-        title=(body.title or "客户公开资料")[:128],
+        title=title,
         source_url=source_url or None,
         content=content,
         persona_summary=await llm.analyze_persona_source(content, _customer_payload(customer, db), source_type, source_url),
@@ -1354,6 +1360,97 @@ def _persona_source_payload(item: PersonaSource) -> dict:
 def _normalize_persona_source_type(source_type: str) -> str:
     value = (source_type or "").strip()
     return value if value in PERSONA_SOURCE_TYPES else "manual"
+
+
+def _prepare_persona_source_input(title: str | None, content: str, source_type: str, source_url: str | None) -> tuple[str, str, str, str]:
+    raw_content = (content or "").strip()
+    cleaned_url = _clean_source_url(source_url or _extract_first_url(raw_content))
+    normalized_type = _normalize_persona_source_type(source_type)
+    inferred_type = _infer_persona_source_type(normalized_type, cleaned_url, raw_content)
+    prepared_title = (title or _default_persona_title(inferred_type)).strip()[:128] or "客户公开资料"
+    prepared_content = raw_content
+    if inferred_type in {"douyin_profile", "douyin_content"}:
+        prepared_content = _format_douyin_evidence(raw_content, cleaned_url)
+    elif not prepared_content and cleaned_url:
+        prepared_content = (
+            f"来源链接：{cleaned_url}\n"
+            "证据状态：用户只提供了链接，系统尚未抓取完整页面；以下只能作为待验证销售假设。\n"
+            "补充建议：请继续上传页面截图、评论区截图、官网摘要或企查查摘要，让企业判断更完整。"
+        )
+    return prepared_title, prepared_content[:7000], inferred_type, cleaned_url
+
+
+def _extract_first_url(text: str) -> str:
+    matched = URL_PATTERN.search(text or "")
+    return _clean_source_url(matched.group(0)) if matched else ""
+
+
+def _clean_source_url(url: str | None) -> str:
+    return (url or "").strip().rstrip("，。；;、,.!?！？）)")
+
+
+def _infer_persona_source_type(source_type: str, source_url: str, content: str) -> str:
+    if source_type != "manual":
+        return source_type
+    haystack = f"{source_url}\n{content}".lower()
+    if DOUYIN_URL_PATTERN.search(haystack) or "复制打开抖音" in content or "抖音" in content:
+        if "主页" in content and "作品" not in content and "#" not in content:
+            return "douyin_profile"
+        return "douyin_content"
+    if "qcc.com" in haystack or "企查查" in content or "天眼查" in content:
+        return "qichacha"
+    if source_url:
+        return "website"
+    return "manual"
+
+
+def _format_douyin_evidence(content: str, source_url: str) -> str:
+    text = (content or "").strip()
+    subject = ""
+    account = ""
+    subject_match = re.search(r"看看【(.+?)】", text)
+    if subject_match:
+        subject = subject_match.group(1).strip()
+        account = re.sub(r"的(作品|主页|视频)$", "", subject).strip()
+    text_without_url = text.replace(source_url, "") if source_url else text
+    after_subject = text_without_url.split("】", 1)[1] if "】" in text_without_url else text_without_url
+    work_clue = re.split(r"#|https?://", after_subject, maxsplit=1)[0].strip(" ，。:：")
+    tags = []
+    for tag in re.findall(r"#\s*([^#\s，。\.…]+)", text):
+        clean_tag = tag.strip(" ，。:：#.")
+        if clean_tag and clean_tag not in tags:
+            tags.append(clean_tag)
+    lines = [
+        "平台：抖音",
+        "资料类型：抖音分享文案/短链，系统尚未抓取完整视频页面。",
+        "证据状态：只能基于用户粘贴的分享文案、链接、标题、标签做销售假设，不能当成已抓取完整页面。",
+    ]
+    if source_url:
+        lines.append(f"来源链接：{source_url}")
+    if account:
+        lines.append(f"账号：{account}")
+    elif subject:
+        lines.append(f"账号/主体线索：{subject}")
+    if work_clue:
+        lines.append(f"作品线索：{work_clue}")
+    if tags:
+        lines.append(f"标签：{'、'.join(tags)}")
+    if text:
+        lines.append(f"原始分享文本：{text[:1000]}")
+    else:
+        lines.append("用户只提供了链接，建议继续上传抖音主页截图、视频截图、评论区截图或口播摘要，才能分析账号定位、客户性格和真实互动痛点。")
+    return "\n".join(lines)
+
+
+def _default_persona_title(source_type: str) -> str:
+    titles = {
+        "douyin_profile": "抖音主页情报",
+        "douyin_content": "抖音内容情报",
+        "qichacha": "企查查企业情报",
+        "website": "官网公开情报",
+        "manual": "销售观察情报",
+    }
+    return titles.get(source_type, "客户公开资料")
 
 
 def _persona_source_type_label(source_type: str) -> str:
