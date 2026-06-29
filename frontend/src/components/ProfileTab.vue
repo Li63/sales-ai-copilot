@@ -252,50 +252,69 @@ async function appendPersonaImages(files: FileList | null) {
 <style scoped>
 .panorama {
   display: grid;
-  gap: 12px;
-  padding: 12px;
+  gap: 14px;
+  padding: 14px;
 }
 
 .hero,
 .panel,
 .insight-grid article {
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  border: 1px solid oklch(0.87 0.021 105 / 0.86);
+  border-radius: var(--radius-md);
   background: var(--surface);
   box-shadow: var(--shadow-soft);
 }
 
 .hero {
+  position: relative;
+  overflow: hidden;
   display: grid;
   grid-template-columns: 1fr 92px;
   align-items: center;
   gap: 14px;
-  padding: 15px;
-  color: white;
-  background: linear-gradient(135deg, oklch(0.29 0.055 230), oklch(0.4 0.085 175));
+  padding: 18px;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 88% 10%, oklch(0.9 0.085 82 / 0.8), transparent 160px),
+    linear-gradient(135deg, oklch(1 0.004 95), oklch(0.92 0.052 171));
+}
+
+.hero::after {
+  content: "";
+  position: absolute;
+  right: -44px;
+  bottom: -80px;
+  width: 190px;
+  height: 190px;
+  border: 1px solid oklch(0.74 0.052 175 / 0.32);
+  border-radius: 50%;
 }
 
 .hero span {
-  color: oklch(0.84 0.055 178);
-  font-size: 12px;
+  color: var(--brand-strong);
+  font-size: 11px;
   font-weight: 900;
+  letter-spacing: 0.04em;
 }
 
 .hero strong {
   display: block;
   margin-top: 4px;
-  font-size: 20px;
+  font-size: 22px;
+  letter-spacing: -0.04em;
   line-height: 1.2;
 }
 
 .hero p {
   margin: 8px 0 0;
-  color: oklch(0.94 0.018 190);
+  color: var(--muted);
   font-size: 13px;
   line-height: 1.55;
 }
 
 .score-ring {
+  position: relative;
+  z-index: 1;
   display: grid;
   place-items: center;
   align-content: center;
@@ -304,7 +323,8 @@ async function appendPersonaImages(files: FileList | null) {
   border-radius: 50%;
   background:
     radial-gradient(circle at center, white 58%, transparent 59%),
-    conic-gradient(var(--brand-soft) var(--score), oklch(1 0 0 / 0.22) 0);
+    conic-gradient(var(--brand) var(--score), oklch(0.89 0.02 105) 0);
+  box-shadow: 0 12px 28px oklch(0.34 0.095 184 / 0.14);
 }
 
 .score-ring strong {
@@ -322,32 +342,33 @@ async function appendPersonaImages(files: FileList | null) {
 .insight-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  gap: 10px;
 }
 
 .insight-grid article,
 .panel {
-  padding: 13px;
+  padding: 14px;
 }
 
 .insight-grid span,
 .panel-head span {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
+  letter-spacing: 0.03em;
 }
 
 .insight-grid strong {
   display: block;
   margin-top: 6px;
   color: var(--ink);
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.45;
 }
 
 .panel {
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
 .panel-head {
@@ -358,20 +379,22 @@ async function appendPersonaImages(files: FileList | null) {
 
 .panel-head strong {
   color: var(--ink);
-  font-size: 15px;
+  font-size: 16px;
+  letter-spacing: -0.02em;
 }
 
 select,
 input,
 textarea {
   width: 100%;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 10px;
+  border: 1px solid oklch(0.86 0.021 105);
+  border-radius: 14px;
+  padding: 11px 12px;
   color: var(--ink);
-  background: var(--surface-raised);
+  background: oklch(1 0.004 95 / 0.78);
   font-size: 13px;
   line-height: 1.55;
+  box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.78);
 }
 
 select {
@@ -409,11 +432,12 @@ textarea {
 .image-upload {
   display: grid;
   place-items: center;
-  min-height: 38px;
+  min-height: 40px;
   border: 1px dashed oklch(0.76 0.055 175);
-  border-radius: 8px;
+  border-radius: 14px;
   color: var(--brand-strong);
-  background: var(--brand-soft);
+  background:
+    linear-gradient(135deg, oklch(0.96 0.04 171), oklch(0.98 0.028 84));
   font-size: 12px;
   font-weight: 900;
 }
@@ -426,12 +450,13 @@ textarea {
 
 .source-type-grid button {
   min-height: 34px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  border: 1px solid oklch(0.86 0.021 105);
+  border-radius: 14px;
   color: var(--muted);
-  background: white;
+  background: oklch(1 0.004 95 / 0.8);
   font-size: 12px;
   font-weight: 900;
+  transition: color 0.18s ease, border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
 }
 
 .source-type-grid .active {
@@ -447,15 +472,21 @@ textarea {
 .primary {
   height: 39px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 14px;
   color: white;
-  background: var(--brand);
+  background:
+    radial-gradient(circle at 88% 8%, var(--accent), transparent 44px),
+    linear-gradient(135deg, var(--brand-strong), var(--brand));
   font-weight: 900;
+  box-shadow: 0 12px 24px oklch(0.34 0.095 184 / 0.18);
 }
 
 .status-panel {
   grid-template-columns: 1fr auto;
   align-items: center;
+  border-color: oklch(0.83 0.05 84 / 0.72);
+  background:
+    linear-gradient(135deg, oklch(1 0.004 95), oklch(0.975 0.03 84));
 }
 
 .status-panel strong {
@@ -475,9 +506,9 @@ textarea {
   min-width: 96px;
   min-height: 36px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 14px;
   color: white;
-  background: var(--brand);
+  background: linear-gradient(135deg, var(--brand-strong), var(--brand));
   font-size: 12px;
   font-weight: 900;
 }
@@ -500,10 +531,10 @@ textarea {
 
 .outcome button {
   height: 34px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  border: 1px solid oklch(0.86 0.021 105);
+  border-radius: 14px;
   color: var(--muted);
-  background: white;
+  background: oklch(1 0.004 95 / 0.8);
   font-weight: 800;
 }
 
@@ -519,12 +550,27 @@ textarea {
 }
 
 .persona-ai-card {
+  position: relative;
+  overflow: hidden;
   display: grid;
   gap: 8px;
-  padding: 11px;
+  padding: 13px;
   border: 1px solid oklch(0.78 0.055 175);
-  border-radius: 8px;
-  background: linear-gradient(180deg, var(--brand-soft), white);
+  border-radius: var(--radius-md);
+  background:
+    radial-gradient(circle at 96% 0%, oklch(0.9 0.08 84 / 0.62), transparent 140px),
+    linear-gradient(135deg, var(--brand-soft), white 76%);
+}
+
+.persona-ai-card::before {
+  content: "AI";
+  position: absolute;
+  right: 13px;
+  bottom: -8px;
+  color: oklch(0.72 0.055 175 / 0.18);
+  font-size: 56px;
+  font-weight: 950;
+  letter-spacing: -0.08em;
 }
 
 .persona-ai-head,
@@ -563,10 +609,10 @@ textarea {
 .record {
   display: grid;
   gap: 6px;
-  padding: 10px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface-soft);
+  padding: 11px;
+  border: 1px solid oklch(0.88 0.018 105);
+  border-radius: 14px;
+  background: oklch(0.978 0.014 104);
 }
 
 .record p,

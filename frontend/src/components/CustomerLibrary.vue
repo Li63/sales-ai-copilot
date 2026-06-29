@@ -111,26 +111,30 @@ function toggle(level: string) {
 <style scoped>
 .library {
   display: grid;
-  gap: 12px;
-  padding: 12px;
+  gap: 14px;
+  padding: 14px;
 }
 
 .library-head,
 .level-section,
 .search-box {
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  border: 1px solid oklch(0.87 0.021 105 / 0.86);
+  border-radius: var(--radius-md);
   background: var(--surface);
   box-shadow: var(--shadow-soft);
 }
 
 .library-head {
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px;
-  color: white;
-  background: linear-gradient(135deg, oklch(0.3 0.055 230), oklch(0.38 0.075 175));
+  padding: 16px;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 90% 0%, oklch(0.9 0.085 82 / 0.68), transparent 150px),
+    linear-gradient(135deg, oklch(1 0.004 95), oklch(0.92 0.052 171));
 }
 
 .library-head div {
@@ -139,11 +143,12 @@ function toggle(level: string) {
 }
 
 .library-head strong {
-  font-size: 17px;
+  font-size: 20px;
+  letter-spacing: -0.04em;
 }
 
 .library-head span {
-  color: oklch(0.87 0.04 178);
+  color: var(--muted);
   font-size: 12px;
   line-height: 1.45;
 }
@@ -152,28 +157,32 @@ function toggle(level: string) {
   font-style: normal;
   font-size: 12px;
   font-weight: 900;
+  padding: 6px 10px;
+  border-radius: 999px;
+  color: var(--brand-strong);
+  background: oklch(1 0 0 / 0.62);
 }
 
 .search-box {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 8px;
-  padding: 10px;
+  padding: 11px;
 }
 
 .search-box input {
   width: 100%;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 10px;
+  border: 1px solid oklch(0.86 0.021 105);
+  border-radius: 14px;
+  padding: 11px 12px;
   color: var(--ink);
-  background: var(--surface-raised);
+  background: oklch(1 0.004 95 / 0.78);
   font-size: 13px;
 }
 
 .search-box button {
   border: 0;
-  border-radius: 8px;
+  border-radius: 14px;
   padding: 0 10px;
   color: var(--brand-strong);
   background: var(--brand-soft);
@@ -193,8 +202,9 @@ function toggle(level: string) {
   gap: 10px;
   padding: 12px 14px;
   border: 0;
-  border-bottom: 1px solid var(--line);
-  background: var(--surface-soft);
+  border-bottom: 1px solid oklch(0.88 0.018 105);
+  background:
+    linear-gradient(135deg, oklch(0.99 0.008 100), oklch(0.965 0.018 104));
   text-align: left;
 }
 
@@ -218,11 +228,12 @@ function toggle(level: string) {
   place-items: center;
   min-width: 28px;
   height: 28px;
-  border-radius: 8px;
+  border-radius: 999px;
   color: var(--brand-strong);
-  background: var(--brand-soft);
+  background: oklch(1 0.004 95 / 0.72);
   font-style: normal;
   font-weight: 900;
+  box-shadow: inset 0 0 0 1px oklch(0.8 0.05 175 / 0.52);
 }
 
 .customer-list {
@@ -235,9 +246,10 @@ function toggle(level: string) {
   width: 100%;
   padding: 12px 14px;
   border: 0;
-  border-bottom: 1px solid var(--line);
-  background: white;
+  border-bottom: 1px solid oklch(0.9 0.014 104);
+  background: oklch(1 0.004 95);
   text-align: left;
+  transition: background 0.18s ease, transform 0.18s ease;
 }
 
 .customer-card:last-child {
@@ -246,6 +258,7 @@ function toggle(level: string) {
 
 .customer-card:active {
   background: var(--brand-soft);
+  transform: scale(0.996);
 }
 
 .customer-main {
@@ -286,7 +299,7 @@ function toggle(level: string) {
 .closed-note {
   width: fit-content;
   padding: 5px 8px;
-  border-radius: 8px;
+  border-radius: 999px;
   color: oklch(0.38 0.1 150);
   background: oklch(0.94 0.055 150);
   font-size: 12px;
@@ -311,9 +324,9 @@ function toggle(level: string) {
 
 .follow-mini {
   padding: 8px 10px;
-  border-radius: 8px;
+  border-radius: 14px;
   color: var(--ink);
-  background: var(--surface-soft);
+  background: oklch(0.978 0.014 104);
   font-size: 12px;
   line-height: 1.45;
 }

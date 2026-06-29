@@ -151,6 +151,7 @@ onMounted(() => {
         <div>
           <span>Sales Copilot</span>
           <strong>销冠副驾</strong>
+          <em>清爽作战台 · 每次沟通都有下一步</em>
         </div>
         <button type="button" @click="store.logout()">退出</button>
       </header>
@@ -261,65 +262,124 @@ onMounted(() => {
 
 <style scoped>
 .shell {
+  position: relative;
+  overflow: hidden;
   min-height: 100vh;
   width: min(100vw, 980px);
   margin: 0 auto;
-  background: var(--bg);
-  box-shadow: 0 0 0 1px oklch(0.86 0.012 245 / 0.65);
+  background:
+    linear-gradient(180deg, oklch(1 0.004 95 / 0.82), oklch(0.97 0.014 112 / 0.92)),
+    var(--bg);
+  box-shadow:
+    0 0 0 1px oklch(0.86 0.026 105 / 0.72),
+    0 24px 80px oklch(0.2 0.045 224 / 0.12);
+}
+
+.shell::before {
+  content: "";
+  position: fixed;
+  inset: 0 max(0px, calc((100vw - 980px) / 2)) auto;
+  height: 230px;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 18% 0%, oklch(0.82 0.08 174 / 0.32), transparent 210px),
+    radial-gradient(circle at 86% 10%, oklch(0.9 0.085 82 / 0.4), transparent 190px);
+  z-index: 0;
+}
+
+.shell > * {
+  position: relative;
+  z-index: 1;
 }
 
 .workspace-bar {
+  position: sticky;
+  top: 0;
+  z-index: 15;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 58px;
-  padding: 12px 14px;
-  color: white;
-  background: linear-gradient(135deg, oklch(0.28 0.045 220), oklch(0.34 0.075 175));
+  min-height: 78px;
+  padding: 14px 16px 12px;
+  color: var(--ink);
+  background:
+    linear-gradient(135deg, oklch(1 0.004 95 / 0.9), oklch(0.94 0.047 171 / 0.82)),
+    oklch(1 0 0 / 0.82);
+  border-bottom: 1px solid oklch(0.87 0.026 105 / 0.75);
+  box-shadow: 0 14px 34px oklch(0.18 0.04 224 / 0.07);
+  backdrop-filter: blur(18px);
 }
 
 .workspace-bar div {
   display: grid;
-  gap: 2px;
+  gap: 3px;
 }
 
 .workspace-bar span {
-  color: oklch(0.83 0.05 180);
+  width: fit-content;
+  padding: 4px 8px;
+  border: 1px solid oklch(0.79 0.056 175 / 0.65);
+  border-radius: 999px;
+  color: var(--brand-strong);
+  background: oklch(1 0 0 / 0.52);
   font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0;
+  font-weight: 950;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .workspace-bar strong {
-  font-size: 17px;
-  letter-spacing: 0;
+  font-size: 20px;
+  letter-spacing: -0.03em;
+}
+
+.workspace-bar em {
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
 }
 
 .workspace-bar button {
-  height: 30px;
-  border: 1px solid oklch(1 0 0 / 0.24);
-  border-radius: 6px;
-  padding: 0 10px;
-  color: white;
-  background: oklch(1 0 0 / 0.1);
+  height: 34px;
+  border: 1px solid oklch(0.78 0.052 175 / 0.62);
+  border-radius: 999px;
+  padding: 0 13px;
+  color: var(--brand-strong);
+  background: oklch(1 0 0 / 0.58);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 900;
+  box-shadow: var(--shadow-tiny);
 }
 
 .onboarding {
   display: grid;
-  gap: 12px;
-  padding: 12px;
+  gap: 14px;
+  padding: 14px;
 }
 
 .hello {
-  padding: 16px;
-  border: 1px solid oklch(1 0 0 / 0.18);
-  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+  padding: 20px;
+  border: 1px solid oklch(1 0 0 / 0.34);
+  border-radius: var(--radius-lg);
   color: white;
-  background: linear-gradient(135deg, oklch(0.31 0.06 230), oklch(0.42 0.09 175));
-  box-shadow: var(--shadow-soft);
+  background:
+    radial-gradient(circle at 88% 12%, oklch(0.78 0.13 82 / 0.5), transparent 190px),
+    linear-gradient(135deg, oklch(0.25 0.06 226), oklch(0.39 0.1 178));
+  box-shadow: var(--shadow);
+}
+
+.hello::after {
+  content: "";
+  position: absolute;
+  right: -34px;
+  bottom: -52px;
+  width: 160px;
+  height: 160px;
+  border: 1px solid oklch(1 0 0 / 0.22);
+  border-radius: 50%;
 }
 
 .hello span {
@@ -345,14 +405,14 @@ onMounted(() => {
 
 .content {
   min-height: calc(100vh - 128px);
-  padding-bottom: 76px;
+  padding-bottom: 92px;
 }
 
 .mine,
 .summary {
   display: grid;
-  gap: 12px;
-  padding: 12px;
+  gap: 14px;
+  padding: 14px;
 }
 
 .summary :deep(.summary-dashboard) {
@@ -365,9 +425,9 @@ onMounted(() => {
 
 .error {
   margin: 10px 12px;
-  padding: 10px 12px;
+  padding: 11px 13px;
   border: 1px solid oklch(0.86 0.09 25);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   color: oklch(0.4 0.14 25);
   background: oklch(0.97 0.035 25);
   font-size: 13px;
@@ -375,35 +435,43 @@ onMounted(() => {
 
 .bottom-nav {
   position: fixed;
-  right: max(0px, calc((100vw - 980px) / 2));
-  bottom: 0;
-  left: max(0px, calc((100vw - 980px) / 2));
+  right: max(12px, calc((100vw - 956px) / 2));
+  bottom: 12px;
+  left: max(12px, calc((100vw - 956px) / 2));
   z-index: 20;
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 4px;
+  gap: 5px;
   min-height: 62px;
-  padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
-  border-top: 1px solid var(--line);
-  background: oklch(1 0 0 / 0.96);
-  box-shadow: 0 -10px 24px oklch(0.18 0.025 245 / 0.08);
-  backdrop-filter: blur(10px);
+  padding: 8px;
+  padding-bottom: calc(8px + env(safe-area-inset-bottom));
+  border: 1px solid oklch(0.88 0.021 105 / 0.82);
+  border-radius: 24px;
+  background: oklch(1 0.004 95 / 0.82);
+  box-shadow: 0 18px 46px oklch(0.18 0.04 224 / 0.16);
+  backdrop-filter: blur(18px);
 }
 
 .bottom-nav button {
+  position: relative;
   min-width: 0;
-  height: 42px;
+  height: 44px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 17px;
   color: var(--muted);
   background: transparent;
   font-size: 12px;
   font-weight: 900;
+  transition: color 0.18s ease, background 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
 }
 
 .bottom-nav .active {
   color: white;
-  background: var(--brand);
+  background:
+    radial-gradient(circle at 80% 0%, oklch(0.78 0.13 82 / 0.55), transparent 42px),
+    linear-gradient(135deg, var(--brand-strong), var(--brand));
+  box-shadow: 0 10px 20px oklch(0.34 0.095 184 / 0.22);
+  transform: translateY(-1px);
 }
 
 .ai-busy {
@@ -413,7 +481,8 @@ onMounted(() => {
   display: grid;
   place-items: center;
   padding: 22px;
-  background: oklch(0.18 0.025 245 / 0.28);
+  background: oklch(0.18 0.04 224 / 0.34);
+  backdrop-filter: blur(5px);
 }
 
 .busy-card {
@@ -421,10 +490,12 @@ onMounted(() => {
   justify-items: center;
   gap: 9px;
   width: min(320px, calc(100vw - 44px));
-  padding: 18px 16px;
+  padding: 20px 18px;
   border: 1px solid oklch(1 0 0 / 0.48);
-  border-radius: 8px;
-  background: var(--surface);
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(180deg, oklch(1 0.004 95), oklch(0.966 0.018 105)),
+    var(--surface);
   box-shadow: var(--shadow);
   text-align: center;
 }
@@ -432,7 +503,7 @@ onMounted(() => {
 .spinner {
   width: 34px;
   height: 34px;
-  border: 3px solid var(--brand-soft);
+  border: 3px solid oklch(0.9 0.05 171);
   border-top-color: var(--brand);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
@@ -469,7 +540,11 @@ onMounted(() => {
 @media (max-width: 420px) {
   .bottom-nav {
     gap: 2px;
-    padding-inline: 5px;
+    right: 8px;
+    left: 8px;
+    bottom: 8px;
+    padding-inline: 6px;
+    border-radius: 20px;
   }
 
   .bottom-nav button {

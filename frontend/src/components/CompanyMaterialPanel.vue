@@ -115,11 +115,12 @@ function submit() {
 <style scoped>
 .company-material {
   display: grid;
-  gap: 10px;
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface);
+  gap: 12px;
+  padding: 15px;
+  border: 1px solid oklch(0.87 0.021 105 / 0.86);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(180deg, oklch(1 0.004 95), oklch(0.975 0.014 104));
   box-shadow: var(--shadow-soft);
 }
 
@@ -130,7 +131,8 @@ function submit() {
 
 .section-head strong {
   color: var(--ink);
-  font-size: 15px;
+  font-size: 16px;
+  letter-spacing: -0.02em;
 }
 
 .section-head span {
@@ -142,11 +144,11 @@ function submit() {
 input,
 textarea {
   width: 100%;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 10px;
+  border: 1px solid oklch(0.86 0.021 105);
+  border-radius: 14px;
+  padding: 11px 12px;
   color: var(--ink);
-  background: var(--surface-raised);
+  background: oklch(1 0.004 95 / 0.78);
   font-size: 13px;
   line-height: 1.55;
 }
@@ -163,10 +165,10 @@ textarea {
 
 .mode-switch button {
   min-height: 36px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  border: 1px solid oklch(0.86 0.021 105);
+  border-radius: 14px;
   color: var(--muted);
-  background: white;
+  background: oklch(1 0.004 95 / 0.8);
   font-size: 12px;
   font-weight: 900;
 }
@@ -180,9 +182,10 @@ textarea {
 .hint {
   margin: 0;
   padding: 10px;
-  border-radius: 8px;
+  border-radius: 14px;
   color: var(--brand-strong);
-  background: var(--brand-soft);
+  background:
+    linear-gradient(135deg, var(--brand-soft), oklch(0.98 0.03 84));
   font-size: 12px;
   line-height: 1.55;
 }
@@ -196,7 +199,7 @@ textarea {
 .upload-row label,
 .upload-row button {
   min-height: 36px;
-  border-radius: 8px;
+  border-radius: 14px;
   font-size: 12px;
   font-weight: 900;
 }
@@ -206,7 +209,8 @@ textarea {
   place-items: center;
   border: 1px solid var(--line);
   color: var(--brand-strong);
-  background: var(--brand-soft);
+  background:
+    linear-gradient(135deg, oklch(0.96 0.04 171), oklch(0.98 0.028 84));
 }
 
 .upload-row label input {
@@ -217,7 +221,8 @@ textarea {
   grid-column: 1 / -1;
   border: 0;
   color: white;
-  background: var(--brand);
+  background: linear-gradient(135deg, var(--brand-strong), var(--brand));
+  box-shadow: 0 12px 24px oklch(0.34 0.095 184 / 0.18);
 }
 
 .material-list {
@@ -227,9 +232,9 @@ textarea {
 
 .material-list article {
   padding: 10px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface-soft);
+  border: 1px solid oklch(0.88 0.018 105);
+  border-radius: 14px;
+  background: oklch(0.978 0.014 104);
 }
 
 .material-list strong {

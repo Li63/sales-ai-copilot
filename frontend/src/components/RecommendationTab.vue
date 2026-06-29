@@ -210,8 +210,8 @@ async function generateIntentReply() {
 <style scoped>
 .recommendation {
   display: grid;
-  gap: 12px;
-  padding: 12px;
+  gap: 14px;
+  padding: 14px;
 }
 
 .customer-panel,
@@ -222,8 +222,8 @@ async function generateIntentReply() {
 .intent-result,
 .reply-card,
 .empty-card {
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  border: 1px solid oklch(0.87 0.021 105 / 0.86);
+  border-radius: var(--radius-md);
   background: var(--surface);
   box-shadow: var(--shadow-soft);
 }
@@ -232,15 +232,33 @@ async function generateIntentReply() {
 .import-panel,
 .intent-panel {
   display: grid;
-  gap: 10px;
-  padding: 12px;
+  gap: 12px;
+  padding: 14px;
 }
 
 .customer-panel {
-  background: linear-gradient(135deg, var(--accent-soft), white 62%);
+  position: relative;
+  overflow: hidden;
+  border-color: oklch(0.78 0.052 175 / 0.74);
+  background:
+    radial-gradient(circle at 92% 12%, oklch(0.89 0.078 82 / 0.74), transparent 150px),
+    linear-gradient(135deg, oklch(1 0.004 95), var(--brand-soft) 110%);
+}
+
+.customer-panel::after {
+  content: "";
+  position: absolute;
+  right: -30px;
+  bottom: -54px;
+  width: 130px;
+  height: 130px;
+  border: 1px solid oklch(0.79 0.055 175 / 0.42);
+  border-radius: 50%;
 }
 
 .panel-head {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -258,36 +276,42 @@ async function generateIntentReply() {
 .reply-card > span {
   display: block;
   color: var(--muted);
-  font-size: 12px;
-  font-weight: 800;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: 0.04em;
 }
 
 .panel-head strong {
   color: var(--ink);
-  font-size: 15px;
+  font-size: 16px;
+  letter-spacing: -0.02em;
 }
 
 .level {
   min-width: 30px;
-  padding: 5px 8px;
-  border-radius: 8px;
+  padding: 6px 9px;
+  border-radius: 999px;
   color: var(--brand-strong) !important;
-  background: var(--brand-soft);
+  background: oklch(1 0 0 / 0.68);
   text-align: center;
   font-weight: 900 !important;
+  box-shadow: inset 0 0 0 1px oklch(0.79 0.052 175 / 0.6);
 }
 
 select,
 input,
 textarea {
+  position: relative;
+  z-index: 1;
   width: 100%;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 10px;
+  border: 1px solid oklch(0.86 0.021 105);
+  border-radius: 14px;
+  padding: 11px 12px;
   color: var(--ink);
-  background: var(--surface-raised);
+  background: oklch(1 0.004 95 / 0.78);
   font-size: 13px;
   line-height: 1.55;
+  box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.78);
 }
 
 select {
@@ -299,6 +323,8 @@ textarea {
 }
 
 .new-customer {
+  position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: 1fr 72px;
   gap: 8px;
@@ -308,20 +334,24 @@ textarea {
 .new-customer button {
   height: 34px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 14px;
   color: white;
-  background: var(--brand);
+  background:
+    radial-gradient(circle at 86% 8%, var(--accent), transparent 38px),
+    linear-gradient(135deg, var(--brand-strong), var(--brand));
   font-weight: 900;
+  box-shadow: 0 10px 20px oklch(0.34 0.095 184 / 0.18);
 }
 
 .image-upload {
   display: grid;
   place-items: center;
-  min-height: 36px;
+  min-height: 40px;
   border: 1px dashed oklch(0.76 0.055 175);
-  border-radius: 8px;
+  border-radius: 14px;
   color: var(--brand-strong);
-  background: var(--brand-soft);
+  background:
+    linear-gradient(135deg, oklch(0.96 0.04 171), oklch(0.98 0.028 84));
   font-size: 12px;
   font-weight: 900;
 }
@@ -333,41 +363,58 @@ textarea {
 .signal-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: 10px;
 }
 
 .signal-grid div,
 .next-action {
-  padding: 12px;
+  padding: 14px;
 }
 
 .signal-grid strong {
   display: block;
   margin-top: 6px;
   color: var(--ink);
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.4;
 }
 
 .next-action {
-  border-color: oklch(0.82 0.045 175);
-  background: linear-gradient(180deg, var(--brand-soft), white);
+  position: relative;
+  overflow: hidden;
+  border-color: oklch(0.81 0.052 175 / 0.72);
+  background:
+    radial-gradient(circle at 100% 0%, oklch(0.88 0.08 84 / 0.74), transparent 160px),
+    linear-gradient(135deg, var(--brand-soft), white 72%);
+}
+
+.next-action::before {
+  content: "NEXT";
+  position: absolute;
+  right: 12px;
+  top: 10px;
+  color: oklch(0.73 0.05 175 / 0.34);
+  font-size: 22px;
+  font-weight: 950;
+  letter-spacing: -0.06em;
 }
 
 .intent-panel {
-  background: linear-gradient(180deg, white, var(--surface-soft));
+  background:
+    linear-gradient(180deg, oklch(1 0.004 95), oklch(0.965 0.018 104));
 }
 
 .intent-result {
   display: grid;
   gap: 9px;
-  padding: 11px;
+  padding: 12px;
+  border-radius: 14px;
   background: white;
 }
 
 .intent-result > span {
   width: fit-content;
-  padding: 3px 7px;
+  padding: 4px 8px;
   border-radius: 999px;
   color: var(--brand-strong);
   background: var(--brand-soft);
@@ -391,11 +438,13 @@ textarea {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  padding: 0 2px;
 }
 
 .reply-toolbar strong {
   color: var(--ink);
-  font-size: 15px;
+  font-size: 17px;
+  letter-spacing: -0.03em;
 }
 
 .reply-toolbar button {
@@ -404,26 +453,35 @@ textarea {
 
 .reply-list {
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
 .reply-card {
   position: relative;
   width: 100%;
-  padding: 13px 13px 30px;
+  padding: 15px 15px 34px;
   overflow: hidden;
   text-align: left;
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.reply-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  background: linear-gradient(90deg, var(--brand), var(--accent));
 }
 
 .reply-card:active {
-  transform: translateY(1px);
+  transform: translateY(1px) scale(0.996);
   border-color: var(--brand);
 }
 
 .reply-card > span {
   width: fit-content;
   margin-bottom: 8px;
-  padding: 3px 7px;
+  padding: 5px 8px;
   border-radius: 999px;
   color: var(--brand-strong);
   background: var(--brand-soft);
@@ -431,9 +489,10 @@ textarea {
 
 .reply-reason {
   margin-top: 10px;
-  padding: 9px 10px;
-  border-radius: 8px;
-  background: var(--surface-soft);
+  padding: 10px 11px;
+  border: 1px solid oklch(0.9 0.018 105);
+  border-radius: 14px;
+  background: oklch(0.976 0.014 104);
 }
 
 .reply-reason strong {
@@ -460,7 +519,9 @@ textarea {
 }
 
 .empty-card {
-  padding: 16px;
+  padding: 18px;
+  background:
+    linear-gradient(135deg, white, oklch(0.97 0.018 104));
 }
 
 .empty-card strong {
@@ -475,5 +536,11 @@ textarea {
   color: var(--ink);
   font-size: 14px;
   line-height: 1.6;
+}
+
+@media (max-width: 560px) {
+  .signal-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

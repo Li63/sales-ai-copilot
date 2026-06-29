@@ -69,23 +69,25 @@ async function appendFollowImages(files: FileList | null) {
 <style scoped>
 .follow {
   display: grid;
-  gap: 12px;
-  padding: 12px;
+  gap: 14px;
+  padding: 14px;
 }
 
 .composer,
 article,
 .empty {
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  border: 1px solid oklch(0.87 0.021 105 / 0.86);
+  border-radius: var(--radius-md);
   background: var(--surface);
   box-shadow: var(--shadow-soft);
 }
 
 .composer {
   display: grid;
-  gap: 10px;
-  padding: 14px;
+  gap: 12px;
+  padding: 15px;
+  background:
+    linear-gradient(180deg, oklch(1 0.004 95), oklch(0.975 0.014 104));
 }
 
 .composer-head {
@@ -96,7 +98,8 @@ article,
 
 .composer-head strong {
   color: var(--ink);
-  font-size: 15px;
+  font-size: 16px;
+  letter-spacing: -0.02em;
 }
 
 .composer-head span {
@@ -108,11 +111,11 @@ article,
 textarea {
   width: 100%;
   resize: vertical;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 10px;
+  border: 1px solid oklch(0.86 0.021 105);
+  border-radius: 14px;
+  padding: 11px 12px;
   color: var(--ink);
-  background: var(--surface-raised);
+  background: oklch(1 0.004 95 / 0.78);
   line-height: 1.55;
 }
 
@@ -120,10 +123,11 @@ button {
   width: 100%;
   height: 40px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 14px;
   color: white;
-  background: var(--brand);
+  background: linear-gradient(135deg, var(--brand-strong), var(--brand));
   font-weight: 900;
+  box-shadow: 0 12px 24px oklch(0.34 0.095 184 / 0.18);
 }
 
 .image-upload {
@@ -131,9 +135,9 @@ button {
   place-items: center;
   min-height: 38px;
   border: 1px dashed oklch(0.76 0.055 175);
-  border-radius: 8px;
+  border-radius: 14px;
   color: var(--brand-strong);
-  background: var(--brand-soft);
+  background: linear-gradient(135deg, oklch(0.96 0.04 171), oklch(0.98 0.028 84));
   font-size: 12px;
   font-weight: 900;
 }
@@ -145,12 +149,12 @@ button {
 .timeline {
   display: grid;
   gap: 10px;
-  padding-left: 8px;
+  padding-left: 9px;
 }
 
 article {
   position: relative;
-  padding: 12px 12px 12px 16px;
+  padding: 13px 13px 13px 17px;
 }
 
 article::before {
@@ -162,6 +166,7 @@ article::before {
   border: 2px solid var(--bg);
   border-radius: 50%;
   background: var(--brand);
+  box-shadow: 0 0 0 4px var(--brand-soft);
   content: "";
 }
 
