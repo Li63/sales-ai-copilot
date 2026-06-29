@@ -127,3 +127,36 @@ async def test_llm_service_generates_persona_analysis_for_sales():
     assert "扩团队" in result
     assert "跟进角度" in result
     assert "销售提醒" in result
+
+
+@pytest.mark.asyncio
+async def test_llm_persona_payload_includes_source_type_and_url():
+    captured = {}
+
+    async def ok_client(payload):
+        captured.update(payload)
+        return {
+            "choices": [
+                {
+                    "message": {
+                        "content": '{"summary":"客户在抖音强调交付案例。","business_clues":"正在用内容获客。","content_positioning":"老板IP加案例拆解。","communication_style":"喜欢直接看案例。","decision_logic":"先看可信证据，再谈合作。","follow_angle":"用同类案例开场。","risk_warning":"不要夸大粉丝和转化。","sales_tip":"先问最近内容获客卡点。"}'
+                    }
+                }
+            ]
+        }
+
+    service = LLMService(api_key="x", base_url="https://example.test", model="deepseek-chat", http_client=ok_client)
+
+    result = await service.analyze_persona_source(
+        "抖音主页内容多为案例拆解。",
+        customer_profile={"nickname": "王总"},
+        source_type="douyin_profile",
+        source_url="https://www.douyin.com/user/example",
+    )
+
+    user_payload = captured["messages"][1]["content"]
+    assert "douyin_profile" in user_payload
+    assert "https://www.douyin.com/user/example" in user_payload
+    assert "经营线索" in result
+    assert "内容定位" in result
+    assert "决策逻辑" in result

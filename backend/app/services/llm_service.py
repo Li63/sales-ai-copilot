@@ -81,17 +81,22 @@ INTENT_REPLY_PROMPT = """你是该行业顶尖销售教练，特别擅长把销�
 
 
 PERSONA_ANALYSIS_PROMPT = """你是客户人设分析师，也是懂成交的一线销冠。
-请根据客户公开资料、朋友圈/自媒体内容、聊天截图提取信息，给销售一份能立刻用于沟通的客户判断。
+请根据客户公开资料、朋友圈/自媒体内容、抖音主页、抖音作品摘要、企查查类企业资料、聊天截图提取信息，给销售一份能立刻用于沟通的客户判断。
 
 要求：
 1. 严格基于输入资料，不编造客户身份、资产、关系、意向。
-2. 重点告诉销售：这个客户可能在意什么、喜欢什么沟通方式、下一次怎么开口更自然、哪些动作容易让客户反感。
-3. 语言要像销售教练在提醒销售，务实、短句、可执行，不要像 AI 报告。
-4. 输出标准 JSON，不要 markdown 代码块。
+2. 先识别资料来源类型：douyin_profile、douyin_content、qichacha、website、manual。不同来源要用不同分析角度。
+3. 抖音资料重点看内容定位、表达风格、评论/作品暴露出的关注点；企查查资料重点看经营范围、业务阶段、风险线索、组织变化。
+4. 所有判断都必须表达为“销售假设”，不能当成已验证事实。
+5. 语言要像销售教练在提醒销售，务实、短句、可执行，不要像 AI 报告。
+6. 输出标准 JSON，不要 markdown 代码块。
 
 字段：
 - summary：客户资料透露出的核心判断，80 字以内。
+- business_clues：经营状态、业务阶段或组织变化线索，80 字以内。
+- content_positioning：抖音/公开内容呈现出的定位、表达风格或人设线索，80 字以内。
 - communication_style：客户可能更接受的沟通方式，80 字以内。
+- decision_logic：客户可能的判断标准或决策逻辑，80 字以内。
 - follow_angle：下一次可用的跟进角度，80 字以内。
 - risk_warning：销售需要避免的动作或话术，80 字以内。
 - sales_tip：一句给销售的实战提醒，80 字以内。
@@ -214,11 +219,19 @@ class LLMService:
         except Exception:
             return self.fallback_intent_reply(intent, customer_profile)
 
-    async def analyze_persona_source(self, content: str, customer_profile: dict[str, Any] | None = None) -> str:
+    async def analyze_persona_source(
+        self,
+        content: str,
+        customer_profile: dict[str, Any] | None = None,
+        source_type: str = "manual",
+        source_url: str = "",
+    ) -> str:
         payload = self._payload(
             PERSONA_ANALYSIS_PROMPT,
             {
                 "customer_profile": customer_profile or {},
+                "source_type": source_type,
+                "source_url": source_url,
                 "persona_source_content": content[:5000],
             },
             temperature=0.25,
@@ -228,7 +241,7 @@ class LLMService:
             parsed = json.loads(response["choices"][0]["message"]["content"])
             return self._format_persona_analysis(parsed)
         except Exception:
-            return self.fallback_persona_analysis(content)
+            return self.fallback_persona_analysis(content, source_type=source_type, source_url=source_url)
 
     async def generate_ip_content(
         self,
@@ -426,13 +439,17 @@ class LLMService:
             "next_action": f"看客户是否继续追问{objection}",
         }
 
-    def fallback_persona_analysis(self, content: str) -> str:
+    def fallback_persona_analysis(self, content: str, source_type: str = "manual", source_url: str = "") -> str:
         text = content.strip().replace("\n", " ")
         if not text:
             return ""
         clue = text[:120]
         return (
+            f"资料来源：{source_type}{f'（{source_url}）' if source_url else ''}\n"
             f"核心判断：客户公开资料显示：{clue}\n"
+            "经营线索：资料有限，先把它作为销售假设，不直接下结论。\n"
+            "内容定位：若来自抖音或公开主页，优先观察其表达风格、案例主题和评论里的真实顾虑。\n"
+            "决策逻辑：先用资料里的真实线索确认客户现在是否仍关注这件事。\n"
             "沟通方式：先围绕资料里出现的真实关注点开口，少用模板化寒暄。\n"
             "跟进角度：用一个低压问题确认客户当前是否还在关注这件事。\n"
             "风险提醒：不要把单次资料当成最终结论，也不要直接推产品。\n"
@@ -442,7 +459,10 @@ class LLMService:
     def _format_persona_analysis(self, parsed: dict[str, Any]) -> str:
         lines = [
             ("核心判断", parsed.get("summary", "")),
+            ("经营线索", parsed.get("business_clues", "")),
+            ("内容定位", parsed.get("content_positioning", "")),
             ("沟通方式", parsed.get("communication_style", "")),
+            ("决策逻辑", parsed.get("decision_logic", "")),
             ("跟进角度", parsed.get("follow_angle", "")),
             ("风险提醒", parsed.get("risk_warning", "")),
             ("销售提醒", parsed.get("sales_tip", "")),

@@ -67,6 +67,7 @@ export interface PersonaSource {
   id: number
   source_type: string
   title: string
+  source_url: string
   content: string
   persona_summary: string
   created_at: string
@@ -393,7 +394,7 @@ export const useSidebarStore = defineStore('sidebar', {
         external_userid: this.externalUserId
       })
     },
-    async addPersonaSource(payload: { title: string; content: string; source_type: string }) {
+    async addPersonaSource(payload: { title: string; content: string; source_type: string; source_url?: string }) {
       await postData<PersonaSource>('/api/persona/source/add', {
         sales_userid: this.salesUserId,
         external_userid: this.externalUserId,

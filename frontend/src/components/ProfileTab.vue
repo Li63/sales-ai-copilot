@@ -14,7 +14,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   addFeedback: [payload: { ai_reply: string; customer_reply: string; sales_review: string; outcome: 'good' | 'bad' | 'neutral'; original_customer_question?: string }]
-  addPersona: [payload: { title: string; content: string; source_type: string }]
+  addPersona: [payload: { title: string; content: string; source_type: string; source_url?: string }]
   updateStatus: [status: 'active' | 'closed']
 }>()
 
@@ -25,11 +25,29 @@ const salesReview = ref('')
 const outcome = ref<'good' | 'bad' | 'neutral'>('good')
 const personaTitle = ref('')
 const personaContent = ref('')
+const personaSourceType = ref<'douyin_profile' | 'douyin_content' | 'qichacha' | 'website' | 'manual'>('douyin_profile')
+const personaSourceUrl = ref('')
 const recognizingPersona = ref(false)
+
+const sourceTypes = [
+  { value: 'douyin_profile', label: '抖音主页' },
+  { value: 'douyin_content', label: '抖音内容' },
+  { value: 'qichacha', label: '企查查' },
+  { value: 'website', label: '网站资料' },
+  { value: 'manual', label: '手动观察' }
+] as const
 
 const replyOptions = computed(() => props.analysis?.reply_suggestions || [])
 const score = computed(() => props.customer?.intention_score ?? 50)
 const scoreStyle = computed(() => `--score: ${Math.max(0, Math.min(100, score.value))}%`)
+const sourceTypeLabel = (type: string) => sourceTypes.find((item) => item.value === type)?.label || '客户资料'
+const personaPlaceholder = computed(() => {
+  if (personaSourceType.value === 'douyin_profile') return '粘贴抖音主页简介、账号定位、置顶作品、主页截图识别结果。重点写客户怎么介绍自己、常讲什么案例、评论里有哪些真实顾虑。'
+  if (personaSourceType.value === 'douyin_content') return '粘贴抖音作品标题、口播摘要、评论高频问题、互动情况。AI 会提取内容定位、客户关注点和可用开场角度。'
+  if (personaSourceType.value === 'qichacha') return '粘贴企查查/天眼查等资料摘要：经营范围、成立时间、招聘、风险、融资、股权或公开动态。不要粘贴无关长表格。'
+  if (personaSourceType.value === 'website') return '粘贴官网、产品页、媒体报道或公开页面摘要。重点写业务方向、服务对象、案例、近期变化。'
+  return '粘贴销售自己的观察：客户朋友圈、线下沟通、公开资料、共同好友反馈等。'
+})
 
 function submitFeedback() {
   const reply = selectedReply.value || replyOptions.value[0] || ''
@@ -54,10 +72,12 @@ function submitPersona() {
   }
   emit('addPersona', {
     title: personaTitle.value.trim() || '客户公开资料',
-    source_type: 'manual',
+    source_type: personaSourceType.value,
+    source_url: personaSourceUrl.value.trim(),
     content: personaContent.value.trim()
   })
   personaTitle.value = ''
+  personaSourceUrl.value = ''
   personaContent.value = ''
 }
 
@@ -151,10 +171,22 @@ async function appendPersonaImages(files: FileList | null) {
     <article class="panel">
       <div class="panel-head">
         <strong>客户人设资料</strong>
-        <span>长期积累，持续进化</span>
+        <span>抖音 / 企查查 / 公开资料</span>
       </div>
-      <input v-model="personaTitle" placeholder="资料标题：朋友圈动态、公众号文章、视频号简介" />
-      <textarea v-model="personaContent" rows="5" placeholder="粘贴客户公开内容，或上传朋友圈截图、Word、PDF。资料会绑定当前客户，用于后续判断沟通风格与跟进角度。"></textarea>
+      <div class="source-type-grid">
+        <button
+          v-for="item in sourceTypes"
+          :key="item.value"
+          :class="{ active: personaSourceType === item.value }"
+          type="button"
+          @click="personaSourceType = item.value"
+        >
+          {{ item.label }}
+        </button>
+      </div>
+      <input v-model="personaTitle" placeholder="资料标题：抖音主页、企查查资料、官网介绍、线下观察" />
+      <input v-model="personaSourceUrl" placeholder="来源链接：抖音主页、企查查页面、官网链接，可不填" />
+      <textarea v-model="personaContent" rows="5" :placeholder="personaPlaceholder"></textarea>
       <label class="image-upload">
         {{ recognizingPersona ? '正在解析客户资料文件...' : '上传客户资料图片 / Word / PDF' }}
         <input accept=".doc,.docx,.pdf,image/*" multiple type="file" @change="appendPersonaImages(($event.target as HTMLInputElement).files)" />
@@ -179,8 +211,9 @@ async function appendPersonaImages(files: FileList | null) {
         <div v-for="source in personaSources" :key="source.id" class="record">
           <div class="record-head">
             <strong>{{ source.title }}</strong>
-            <span>AI 分析</span>
+            <span>{{ sourceTypeLabel(source.source_type) }}</span>
           </div>
+          <a v-if="source.source_url" class="source-link" :href="source.source_url" rel="noreferrer" target="_blank">{{ source.source_url }}</a>
           <MarkdownView :content="source.persona_summary || '已保存资料，等待分析补充。'" />
         </div>
         <p v-if="!personaSources.length" class="empty">暂无该客户的人设资料</p>
@@ -385,6 +418,28 @@ textarea {
   font-weight: 900;
 }
 
+.source-type-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.source-type-grid button {
+  min-height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  background: white;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.source-type-grid .active {
+  color: var(--brand-strong);
+  border-color: oklch(0.78 0.055 175);
+  background: var(--brand-soft);
+}
+
 .image-upload input {
   display: none;
 }
@@ -526,6 +581,16 @@ textarea {
   color: var(--muted);
   font-size: 12px;
   white-space: pre-line;
+}
+
+.source-link {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--brand-strong);
+  font-size: 12px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .empty {

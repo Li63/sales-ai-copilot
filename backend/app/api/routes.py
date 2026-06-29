@@ -98,6 +98,7 @@ class PersonaSourceRequest(BaseModel):
     content: str
     source_type: str = "manual"
     title: str | None = None
+    source_url: str | None = None
 
 
 class IpContentRequest(BaseModel):
@@ -141,6 +142,7 @@ MAX_FILE_BYTES = 12 * 1024 * 1024
 SUPPORTED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 SUPPORTED_TEXT_TYPES = {"text/plain", "text/markdown", "text/csv", "application/json"}
 SUPPORTED_DOCUMENT_SUFFIXES = {".pdf", ".docx", ".doc"}
+PERSONA_SOURCE_TYPES = {"douyin_profile", "douyin_content", "qichacha", "website", "manual"}
 
 
 def _optional_current_user(
@@ -825,17 +827,20 @@ async def persona_source_add(
 ):
     active_sales_userid = current_user.sales_userid if current_user else body.sales_userid
     customer = CustomerService(db).get_or_create_customer(active_sales_userid, body.external_userid)
-    content = body.content.strip()[:5000]
+    content = body.content.strip()[:7000]
     if not content:
         return {"code": 1, "message": "请填写客户资料内容", "data": {}}
+    source_type = _normalize_persona_source_type(body.source_type)
+    source_url = (body.source_url or "").strip()[:500]
     source = PersonaSource(
         customer_id=customer.id,
         sales_userid=active_sales_userid,
         external_userid=body.external_userid,
-        source_type=body.source_type[:32] or "manual",
+        source_type=source_type,
         title=(body.title or "客户公开资料")[:128],
+        source_url=source_url or None,
         content=content,
-        persona_summary=await llm.analyze_persona_source(content, _customer_payload(customer, db)),
+        persona_summary=await llm.analyze_persona_source(content, _customer_payload(customer, db), source_type, source_url),
     )
     db.add(source)
     db.flush()
@@ -1296,7 +1301,12 @@ def _persona_source_payloads(db: Session, sales_userid: str, external_userid: st
 
 def _persona_sources(db: Session, sales_userid: str, external_userid: str) -> list[dict]:
     return [
-        {"source_type": item["source_type"], "title": item["title"], "persona_summary": item["persona_summary"]}
+        {
+            "source_type": item["source_type"],
+            "title": item["title"],
+            "source_url": item["source_url"],
+            "persona_summary": item["persona_summary"],
+        }
         for item in _persona_source_payloads(db, sales_userid, external_userid, limit=8)
     ]
 
@@ -1316,9 +1326,15 @@ def _refresh_customer_persona(db: Session, customer: Customer) -> None:
     latest = records[0]
     profile = [
         f"最近更新：{latest.created_at.date().isoformat()}，累计资料 {len(records)} 条。",
-        "持续判断：客户人设会随着朋友圈、自媒体、聊天截图和公开资料持续补充，不以单次资料下结论。",
+        "销售假设：以下判断只来自已上传资料，用于优化开场、跟进角度和风险提醒，不等同于已验证事实。",
+        "持续判断：客户人设会随着朋友圈、抖音内容、企查查资料、聊天截图和公开资料持续补充，不以单次资料下结论。",
     ]
-    profile.extend(f"- {summary[:180]}" for summary in summaries[:8] if summary)
+    for record, summary in zip(records[:8], summaries[:8], strict=False):
+        if not summary:
+            continue
+        label = _persona_source_type_label(record.source_type)
+        title = record.title or "客户公开资料"
+        profile.append(f"- {label}｜{title}：{summary[:180]}")
     customer.persona_profile = "\n".join(profile)[:3000]
     customer.persona_updated_at = datetime.utcnow()
 
@@ -1328,10 +1344,27 @@ def _persona_source_payload(item: PersonaSource) -> dict:
         "id": item.id,
         "source_type": item.source_type,
         "title": item.title or "",
+        "source_url": item.source_url or "",
         "content": item.content,
         "persona_summary": item.persona_summary or "",
         "created_at": item.created_at.isoformat(),
     }
+
+
+def _normalize_persona_source_type(source_type: str) -> str:
+    value = (source_type or "").strip()
+    return value if value in PERSONA_SOURCE_TYPES else "manual"
+
+
+def _persona_source_type_label(source_type: str) -> str:
+    labels = {
+        "douyin_profile": "抖音主页",
+        "douyin_content": "抖音内容",
+        "qichacha": "企查查资料",
+        "website": "网站资料",
+        "manual": "手动观察",
+    }
+    return labels.get(source_type, "手动观察")
 
 
 def _summarize_persona_source(content: str) -> str:
