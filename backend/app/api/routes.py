@@ -29,6 +29,7 @@ from app.models import (
 )
 from app.services.auth_service import AuthService
 from app.services.customer_service import CustomerService
+from app.services.douyin_resolver import DouyinLinkResolver, format_douyin_link_evidence
 from app.services.llm_service import LLMService
 from app.services.sales_knowledge import SalesKnowledgeService
 from app.services.transcript_parser import parse_transcript
@@ -836,6 +837,7 @@ async def persona_source_add(
         body.source_type,
         body.source_url,
     )
+    content, source_url = await _enrich_douyin_link_evidence(content, source_type, source_url)
     if not content:
         return {"code": 1, "message": "请填写客户资料内容，或至少提供一个可识别的资料链接", "data": {}}
     source = PersonaSource(
@@ -902,6 +904,7 @@ async def persona_intelligence_analyze(
             return {"code": 1, "message": f"不支持的文件类型：{filename}", "data": {}}
     raw_context = "\n\n".join(block.strip() for block in text_blocks if block.strip())
     prepared_title, prepared_content, inferred_type, cleaned_url = _prepare_persona_source_input(title, raw_context, source_type, source_url)
+    prepared_content, cleaned_url = await _enrich_douyin_link_evidence(prepared_content, inferred_type, cleaned_url)
     if images and not prepared_content:
         prepared_content = "用户上传了客户截图，请基于图片直接识别截图类型、平台、账号、内容、评论、企业线索和销售假设。"
     if not images and not prepared_content:
@@ -1462,6 +1465,23 @@ def _prepare_persona_source_input(title: str | None, content: str, source_type: 
             "补充建议：请继续上传页面截图、评论区截图、官网摘要或企查查摘要，让企业判断更完整。"
         )
     return prepared_title, prepared_content[:7000], inferred_type, cleaned_url
+
+
+async def _enrich_douyin_link_evidence(content: str, source_type: str, source_url: str) -> tuple[str, str]:
+    if source_type not in {"douyin_profile", "douyin_content"} or not source_url:
+        return content, source_url
+    evidence = await _resolve_douyin_link(source_url)
+    formatted = format_douyin_link_evidence(evidence)
+    if not formatted:
+        return content, source_url
+    final_url = _clean_source_url(evidence.get("final_url") or source_url)
+    enriched = "\n\n".join(block for block in [content.strip(), formatted.strip()] if block)
+    return enriched[:7000], final_url or source_url
+
+
+async def _resolve_douyin_link(url: str) -> dict:
+    evidence = await DouyinLinkResolver().resolve(url)
+    return evidence.to_dict()
 
 
 def _extract_first_url(text: str) -> str:

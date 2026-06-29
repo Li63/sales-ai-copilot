@@ -1,3 +1,4 @@
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -8,6 +9,14 @@ from app.core.database import Base, get_db
 from app.main import app
 from app.models import Customer, PersonaSource, Tenant, User
 from app.services.llm_service import LLMService
+
+
+@pytest.fixture(autouse=True)
+def disable_douyin_link_resolution(monkeypatch):
+    async def no_resolution(url: str):
+        return None
+
+    monkeypatch.setattr("app.api.routes._resolve_douyin_link", no_resolution, raising=False)
 
 
 def _client():
@@ -171,6 +180,51 @@ def test_persona_source_add_accepts_url_only_as_pending_evidence():
         source = db.query(PersonaSource).one()
         assert "用户只提供了链接" in source.content
         assert "不能当成已抓取完整页面" in source.content
+        db.close()
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_persona_source_add_enriches_douyin_link_when_public_resolver_succeeds(monkeypatch):
+    async def fake_resolve_douyin_link(url: str):
+        assert url == "https://v.douyin.com/VhrrmUHw3SM/"
+        return {
+            "status": "resolved",
+            "source_url": url,
+            "final_url": "https://www.douyin.com/video/7656390840890654457",
+            "video_id": "7656390840890654457",
+            "title": "金林食品机械设备厂家的作品：瓜果蔬菜萝卜切条机",
+            "description": "瓜果蔬菜萝卜切条机 #萝卜切条机 #果蔬推条机",
+            "cover_url": "https://example.test/cover.jpg",
+            "redirect_chain": [url, "https://www.douyin.com/video/7656390840890654457"],
+            "missing_fields": ["评论"],
+        }
+
+    monkeypatch.setattr("app.api.routes._resolve_douyin_link", fake_resolve_douyin_link)
+    client, session_local = _client()
+    try:
+        response = client.post(
+            "/api/persona/source/add",
+            json={
+                "sales_userid": "user-1",
+                "external_userid": "external-1",
+                "source_type": "manual",
+                "source_url": "https://v.douyin.com/VhrrmUHw3SM/",
+                "title": "抖音链接",
+                "content": "",
+            },
+        )
+
+        assert response.status_code == 200
+        payload = response.json()["data"]
+        assert payload["source_url"] == "https://www.douyin.com/video/7656390840890654457"
+
+        db = session_local()
+        source = db.query(PersonaSource).one()
+        assert "解析方式：抖音公开链接解析" in source.content
+        assert "视频ID：7656390840890654457" in source.content
+        assert "作品标题：金林食品机械设备厂家的作品：瓜果蔬菜萝卜切条机" in source.content
+        assert "未获取字段：评论" in source.content
         db.close()
     finally:
         app.dependency_overrides.clear()

@@ -27,7 +27,7 @@ Rename this area conceptually to "客户情报中枢". Its job is not to store f
 - One intake card: paste link/share text, upload files, or paste notes.
 - System infers source type from link/text where possible.
 - Screenshot upload saves and analyzes automatically through a direct multimodal endpoint; Word/PDF/text files still use text extraction.
-- Douyin share text is parsed into evidence sections before LLM analysis.
+- Douyin share text and links are parsed into evidence sections before LLM analysis. Short links should be resolved to final video pages and video IDs where public access allows it; page title, author, cover, and comments are only treated as facts when actually returned by public metadata or a supported API.
 - Source records are hidden by default; show only compact source coverage.
 
 ## Analysis Output
@@ -48,5 +48,6 @@ The top output becomes "企业全方位解析":
 - Keep the existing Vue 3 + Vant frontend stack.
 - Keep the existing `/api/persona/source/add` API path compatible.
 - Do not claim Douyin page contents were fetched when only share text/link was parsed.
+- Do not claim Douyin title, author, cover, or comments were fetched when the public resolver only obtained a redirect target or video ID.
 - Do not collapse screenshots into OCR-only text when a vision model is available; screenshots are the primary source for most sales users.
 - Server deployment may only touch `/data/sales-ai/app`.

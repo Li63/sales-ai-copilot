@@ -336,7 +336,7 @@ async function appendPersonaImages(files: FileList | null) {
         <textarea
           v-model="personaContent"
           rows="6"
-          :placeholder="`${selectedSource.placeholder}\n\n也可以直接粘贴抖音分享文案，例如：复制打开抖音，看看【某某厂家的作品】... https://v.douyin.com/...`"
+          :placeholder="`${selectedSource.placeholder}\n\n也可以直接粘贴抖音分享文案，例如：复制打开抖音，看看【某某厂家的作品】... https://v.douyin.com/... 系统会自动解析短链、视频 ID 和公开落地页。`"
           @input="syncSourceTypeFromInput"
         ></textarea>
         <div class="action-row">
