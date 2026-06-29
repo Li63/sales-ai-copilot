@@ -985,6 +985,8 @@ textarea {
   .panorama {
     grid-template-columns: repeat(12, minmax(0, 1fr));
     align-items: start;
+    gap: 12px;
+    padding: 0;
   }
 
   .profile-hero,
@@ -993,46 +995,53 @@ textarea {
   .workflow-panel,
   .panel,
   .signal-grid article {
-    border-color: oklch(1 0 0 / 0.62);
-    background-color: var(--surface-glass);
-    backdrop-filter: blur(16px);
+    border-color: #d9e1eb;
+    border-radius: 7px;
+    background: #ffffff;
+    box-shadow: 0 1px 2px rgb(15 23 42 / 5%);
+    backdrop-filter: none;
+  }
+
+  .profile-hero::before,
+  .battle-card::after {
+    content: none;
   }
 
   .profile-hero {
     grid-column: span 5;
-    min-height: 178px;
-    padding: 24px;
-    border-radius: var(--radius-xl);
+    min-height: 148px;
+    padding: 18px;
+    background: #ffffff;
   }
 
   .status-strip {
     grid-column: span 7;
-    min-height: 178px;
+    min-height: 148px;
     align-content: center;
-    padding: 24px;
-    border-radius: var(--radius-xl);
+    padding: 18px;
+    background: #ffffff;
   }
 
   .battle-board {
     grid-column: 1 / -1;
-    padding: 20px;
-    border-radius: var(--radius-xl);
+    padding: 16px;
   }
 
   .battle-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 14px;
+    gap: 12px;
   }
 
   .battle-card {
-    min-height: 176px;
-    border-radius: var(--radius-lg);
+    min-height: 158px;
+    border-color: #e1e7ef;
+    border-radius: 7px;
+    background: #f8fafc;
   }
 
   .workflow-panel {
     grid-column: 1 / -1;
-    padding: 20px;
-    border-radius: var(--radius-xl);
+    padding: 16px;
   }
 
   .workflow-steps {
@@ -1044,8 +1053,27 @@ textarea {
   }
 
   .intake-card {
-    padding: 18px;
-    border-radius: var(--radius-lg);
+    padding: 14px;
+    border-color: #d9e1eb;
+    border-radius: 7px;
+    background: #fbfdff;
+  }
+
+  .workflow-steps div,
+  .source-grid button,
+  .record,
+  select,
+  input,
+  textarea,
+  .file-drop,
+  .outcome button {
+    border-radius: 7px;
+  }
+
+  select,
+  input,
+  textarea {
+    box-shadow: none;
   }
 
   .signal-grid {

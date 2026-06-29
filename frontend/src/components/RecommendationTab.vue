@@ -575,20 +575,54 @@ textarea {
   .recommendation {
     grid-template-columns: repeat(12, minmax(0, 1fr));
     align-items: start;
+    gap: 12px;
+    padding: 0;
+  }
+
+  .customer-panel,
+  .import-panel,
+  .signal-grid div,
+  .next-action,
+  .intent-panel,
+  .intent-result,
+  .reply-card,
+  .empty-card {
+    border-color: #d9e1eb;
+    border-radius: 7px;
+    background: #ffffff;
+    box-shadow: 0 1px 2px rgb(15 23 42 / 5%);
+    backdrop-filter: none;
+  }
+
+  .customer-panel::after,
+  .next-action::before {
+    content: none;
   }
 
   .customer-panel {
     grid-column: span 4;
-    min-height: 236px;
-    padding: 20px;
-    border-radius: var(--radius-xl);
+    min-height: 214px;
+    padding: 16px;
+    background: #ffffff;
   }
 
   .import-panel {
     grid-column: span 8;
-    min-height: 236px;
-    padding: 20px;
-    border-radius: var(--radius-xl);
+    min-height: 214px;
+    padding: 16px;
+  }
+
+  select,
+  input,
+  textarea {
+    border-radius: 7px;
+    background: #ffffff;
+    box-shadow: none;
+  }
+
+  .image-upload {
+    border-radius: 7px;
+    background: #eff6ff;
   }
 
   .signal-grid {
@@ -599,24 +633,25 @@ textarea {
   .signal-grid div,
   .next-action,
   .intent-panel {
-    border-radius: var(--radius-lg);
+    border-radius: 7px;
   }
 
   .signal-grid div {
-    min-height: 132px;
-    padding: 18px;
+    min-height: 116px;
+    padding: 14px;
   }
 
   .next-action {
     grid-column: span 4;
-    min-height: 132px;
-    padding: 18px;
+    min-height: 116px;
+    padding: 14px;
+    background: #ffffff;
   }
 
   .intent-panel {
     grid-column: span 4;
-    min-height: 132px;
-    padding: 18px;
+    min-height: 116px;
+    padding: 14px;
   }
 
   .reply-toolbar,
@@ -626,12 +661,17 @@ textarea {
 
   .reply-list {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 16px;
+    gap: 12px;
   }
 
   .reply-card {
-    min-height: 280px;
-    border-radius: var(--radius-lg);
+    min-height: 248px;
+    border-radius: 7px;
+  }
+
+  .reply-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 20px rgb(15 23 42 / 8%);
   }
 }
 </style>

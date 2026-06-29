@@ -185,30 +185,45 @@ const levelClass = (level?: string) => `level level-${level || 'C'}`
 
 @media (min-width: 1180px) {
   .customer-header {
-    margin: 0 var(--page-gap) 0;
-    padding: 22px 24px;
-    border-radius: var(--radius-xl);
+    margin: 0 0 12px;
+    padding: 14px 16px;
+    border-color: #d9e1eb;
+    border-radius: 7px;
+    background: #ffffff;
+    box-shadow: 0 1px 2px rgb(15 23 42 / 5%);
+    backdrop-filter: none;
+  }
+
+  .customer-header::before {
+    content: none;
   }
 
   .identity-row {
-    gap: 16px;
+    gap: 12px;
   }
 
   .avatar {
-    width: 60px;
-    height: 60px;
-    border-radius: 20px;
+    width: 46px;
+    height: 46px;
+    border-radius: 10px;
+    box-shadow: none;
   }
 
   .avatar img {
-    border-radius: 18px;
+    border-radius: 8px;
+  }
+
+  .name-row strong {
+    font-size: 20px;
   }
 
   .meta-row span {
-    min-height: 48px;
+    min-height: 40px;
     display: grid;
     align-items: center;
-    padding-inline: 14px;
+    padding-inline: 12px;
+    border-radius: 7px;
+    background: #f8fafc;
   }
 }
 </style>
