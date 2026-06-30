@@ -41,6 +41,7 @@ def init_db() -> None:
     _ensure_tenant_columns()
     _ensure_company_material_columns()
     _ensure_customer_persona_columns()
+    _ensure_persona_source_columns()
     _ensure_customer_lifecycle_columns()
     _seed_default_tenant_and_admin()
 
@@ -68,6 +69,19 @@ def _ensure_customer_lifecycle_columns() -> None:
         statements.append("ALTER TABLE customers ADD COLUMN lifecycle_status VARCHAR(16) NOT NULL DEFAULT 'active'")
     if "closed_at" not in columns:
         statements.append("ALTER TABLE customers ADD COLUMN closed_at DATETIME NULL")
+    if not statements:
+        return
+    with engine.begin() as connection:
+        for statement in statements:
+            connection.execute(text(statement))
+
+
+def _ensure_persona_source_columns() -> None:
+    inspector = inspect(engine)
+    columns = {column["name"] for column in inspector.get_columns("persona_sources")}
+    statements: list[str] = []
+    if "source_url" not in columns:
+        statements.append("ALTER TABLE persona_sources ADD COLUMN source_url VARCHAR(500) NULL")
     if not statements:
         return
     with engine.begin() as connection:

@@ -25,6 +25,15 @@ def test_default_sales_playbook_covers_core_channels():
     assert "先接住情绪" in playbook
 
 
+def test_default_sales_playbook_includes_douyin_content_sales_method():
+    playbook = SalesKnowledgeService(_db()).build_context()
+
+    assert "抖音内容销售打法" in playbook
+    assert "3秒钩子" in playbook
+    assert "私域承接" in playbook
+    assert "不要编造榜单" in playbook
+
+
 def test_sales_technique_guide_uses_shared_playbook_sections():
     guide = SalesKnowledgeService(_db()).build_technique_guide()
 

@@ -81,35 +81,40 @@ function submit() {
 
 <style scoped>
 .auth-panel {
+  position: relative;
+  overflow: hidden;
   display: grid;
   align-content: start;
-  gap: 14px;
+  gap: 16px;
   min-height: 100vh;
-  padding: 22px 14px;
+  padding: 26px 14px;
   background:
-    linear-gradient(180deg, oklch(0.26 0.05 230) 0, oklch(0.36 0.07 180) 178px, transparent 178px),
+    radial-gradient(circle at 88% 6%, oklch(0.84 0.1 82 / 0.68), transparent 220px),
+    linear-gradient(180deg, oklch(0.24 0.056 226) 0, oklch(0.39 0.09 178) 190px, transparent 190px),
     var(--bg);
 }
 
 .brand-block {
-  min-height: 138px;
+  min-height: 148px;
   color: white;
 }
 
 .brand-block span {
   display: inline-block;
   margin-bottom: 10px;
-  padding: 4px 8px;
-  border: 1px solid oklch(1 0 0 / 0.18);
+  padding: 5px 9px;
+  border: 1px solid oklch(1 0 0 / 0.28);
   border-radius: 999px;
-  color: oklch(0.86 0.05 175);
+  color: oklch(0.9 0.052 175);
+  background: oklch(1 0 0 / 0.08);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 950;
 }
 
 h1 {
   margin: 0;
-  font-size: 28px;
+  font-size: 32px;
+  letter-spacing: -0.06em;
   line-height: 1.15;
 }
 
@@ -123,21 +128,22 @@ p {
 
 .auth-card {
   display: grid;
-  gap: 12px;
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface);
+  gap: 13px;
+  padding: 16px;
+  border: 1px solid oklch(1 0 0 / 0.62);
+  border-radius: var(--radius-lg);
+  background: oklch(1 0.004 95 / 0.9);
   box-shadow: var(--shadow);
+  backdrop-filter: blur(16px);
 }
 
 .switcher {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  padding: 3px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface-soft);
+  padding: 4px;
+  border: 1px solid oklch(0.86 0.021 105);
+  border-radius: 16px;
+  background: oklch(0.965 0.018 104);
 }
 
 .role-switch {
@@ -148,10 +154,10 @@ p {
 
 .role-switch button {
   height: 36px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  border: 1px solid oklch(0.86 0.021 105);
+  border-radius: 14px;
   color: var(--muted);
-  background: white;
+  background: oklch(1 0.004 95 / 0.76);
   font-weight: 800;
 }
 
@@ -165,7 +171,7 @@ p {
 .primary {
   height: 40px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 14px;
   font-weight: 800;
 }
 
@@ -177,7 +183,7 @@ p {
 .switcher .active {
   color: var(--brand-strong);
   background: white;
-  box-shadow: 0 2px 8px oklch(0.18 0.02 245 / 0.08);
+  box-shadow: var(--shadow-tiny);
 }
 
 label {
@@ -194,18 +200,20 @@ label span {
 input {
   width: 100%;
   height: 42px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  border: 1px solid oklch(0.86 0.021 105);
+  border-radius: 14px;
   padding: 0 12px;
   color: var(--ink);
-  background: var(--surface-raised);
+  background: oklch(1 0.004 95 / 0.78);
 }
 
 .primary {
   margin-top: 2px;
   color: white;
-  background: var(--brand);
-  box-shadow: 0 8px 18px oklch(0.38 0.11 175 / 0.22);
+  background:
+    radial-gradient(circle at 88% 8%, var(--accent), transparent 48px),
+    linear-gradient(135deg, var(--brand-strong), var(--brand));
+  box-shadow: 0 14px 28px oklch(0.34 0.095 184 / 0.22);
 }
 
 .trust-strip {
@@ -216,8 +224,8 @@ input {
 
 .trust-strip span {
   padding: 8px 6px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  border: 1px solid oklch(0.88 0.018 105);
+  border-radius: 14px;
   color: var(--muted);
   background: oklch(1 0 0 / 0.72);
   text-align: center;

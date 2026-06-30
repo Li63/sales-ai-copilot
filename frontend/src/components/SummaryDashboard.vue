@@ -122,23 +122,38 @@ function percent(count: number) {
 <style scoped>
 .summary-dashboard {
   display: grid;
-  gap: 12px;
-  padding: 12px;
+  gap: 14px;
+  padding: 14px;
 }
 
 .summary-head,
 .panel,
 .metric-grid div {
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  border: 1px solid oklch(0.87 0.021 105 / 0.86);
+  border-radius: var(--radius-md);
   background: var(--surface);
   box-shadow: var(--shadow-soft);
 }
 
 .summary-head {
+  position: relative;
+  overflow: hidden;
   padding: 14px;
-  color: white;
-  background: linear-gradient(135deg, oklch(0.29 0.055 230), oklch(0.39 0.08 175));
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 90% 0%, oklch(0.9 0.085 82 / 0.68), transparent 150px),
+    linear-gradient(135deg, oklch(1 0.004 95), oklch(0.92 0.052 171));
+}
+
+.summary-head::after {
+  content: "";
+  position: absolute;
+  right: -42px;
+  bottom: -74px;
+  width: 180px;
+  height: 180px;
+  border: 1px solid oklch(0.75 0.05 175 / 0.34);
+  border-radius: 50%;
 }
 
 .summary-head div,
@@ -148,22 +163,25 @@ function percent(count: number) {
 }
 
 .summary-head strong {
-  font-size: 17px;
+  font-size: 20px;
+  letter-spacing: -0.04em;
 }
 
 .summary-head span {
-  color: oklch(0.88 0.035 178);
+  color: var(--muted);
   font-size: 12px;
 }
 
 .metric-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  gap: 10px;
 }
 
 .metric-grid div {
-  padding: 10px;
+  padding: 13px;
+  background:
+    linear-gradient(180deg, oklch(1 0.004 95), oklch(0.975 0.013 104));
 }
 
 .metric-grid span,
@@ -178,18 +196,20 @@ function percent(count: number) {
   display: block;
   margin-top: 4px;
   color: var(--brand-strong);
-  font-size: 22px;
+  font-size: 24px;
+  letter-spacing: -0.05em;
 }
 
 .panel {
   display: grid;
   gap: 12px;
-  padding: 14px;
+  padding: 15px;
 }
 
 .panel-title strong {
   color: var(--ink);
-  font-size: 15px;
+  font-size: 16px;
+  letter-spacing: -0.02em;
 }
 
 .bar-list {
@@ -214,14 +234,14 @@ function percent(count: number) {
   height: 10px;
   overflow: hidden;
   border-radius: 999px;
-  background: var(--surface-soft);
+  background: oklch(0.92 0.017 104);
 }
 
 .bar-track i {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: var(--brand);
+  background: linear-gradient(90deg, var(--brand), var(--accent));
 }
 
 .bar-row em {
@@ -239,6 +259,7 @@ function percent(count: number) {
   margin: 0 auto;
   border-radius: 999px;
   background: conic-gradient(var(--brand) var(--rate), var(--surface-soft) 0);
+  box-shadow: 0 12px 28px oklch(0.34 0.095 184 / 0.12);
 }
 
 .follow-ring div {
@@ -275,9 +296,10 @@ function percent(count: number) {
   display: flex;
   justify-content: space-between;
   gap: 10px;
-  padding: 9px 10px;
-  border-radius: 8px;
-  background: var(--surface-soft);
+  padding: 10px 11px;
+  border: 1px solid oklch(0.89 0.016 105);
+  border-radius: 14px;
+  background: oklch(0.978 0.014 104);
 }
 
 .hot-list strong {

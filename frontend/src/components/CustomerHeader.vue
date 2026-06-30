@@ -37,14 +37,34 @@ const levelClass = (level?: string) => `level level-${level || 'C'}`
 
 <style scoped>
 .customer-header {
+  position: relative;
+  overflow: hidden;
   display: grid;
   gap: 12px;
-  padding: 14px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--line);
+  margin: 14px 14px 0;
+  padding: 16px;
+  border: 1px solid oklch(1 0 0 / 0.62);
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(circle at 92% 8%, oklch(0.9 0.075 84 / 0.52), transparent 180px),
+    radial-gradient(circle at 8% 0%, oklch(0.82 0.08 178 / 0.18), transparent 190px),
+    linear-gradient(135deg, oklch(1 0.004 95 / 0.92), oklch(0.94 0.046 171 / 0.74));
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(18px);
+}
+
+.customer-header::before {
+  content: "";
+  position: absolute;
+  inset: auto -26px -70px auto;
+  width: 150px;
+  height: 150px;
+  border: 1px solid oklch(0.79 0.05 175 / 0.35);
+  border-radius: 50%;
 }
 
 .identity-row {
+  position: relative;
   display: flex;
   gap: 12px;
   align-items: center;
@@ -53,22 +73,24 @@ const levelClass = (level?: string) => `level level-${level || 'C'}`
 .avatar {
   display: grid;
   place-items: center;
-  width: 46px;
-  height: 46px;
+  width: 50px;
+  height: 50px;
   flex: 0 0 auto;
-  border-radius: 8px;
+  border: 2px solid oklch(1 0 0 / 0.76);
+  border-radius: 16px;
   color: white;
   background:
-    linear-gradient(135deg, var(--brand), var(--accent));
+    radial-gradient(circle at 78% 12%, var(--accent), transparent 42px),
+    linear-gradient(135deg, var(--brand-strong), var(--brand));
   font-weight: 900;
-  box-shadow: 0 8px 16px oklch(0.34 0.09 190 / 0.16);
+  box-shadow: 0 10px 22px oklch(0.34 0.09 190 / 0.18);
 }
 
 .avatar img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 8px;
+  border-radius: 14px;
 }
 
 .identity {
@@ -85,7 +107,8 @@ const levelClass = (level?: string) => `level level-${level || 'C'}`
   min-width: 0;
   overflow: hidden;
   color: var(--ink);
-  font-size: 17px;
+  font-size: clamp(19px, 2vw, 26px);
+  letter-spacing: -0.03em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -93,13 +116,15 @@ const levelClass = (level?: string) => `level level-${level || 'C'}`
 .identity p {
   margin: 5px 0 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 650;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .meta-row {
+  position: relative;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
@@ -107,12 +132,13 @@ const levelClass = (level?: string) => `level level-${level || 'C'}`
 
 .meta-row span {
   min-width: 0;
-  padding: 7px 9px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  padding: 9px 10px;
+  border: 1px solid oklch(0.86 0.022 105 / 0.82);
+  border-radius: 14px;
   color: var(--muted);
-  background: var(--surface-soft);
+  background: oklch(1 0.004 95 / 0.72);
   font-size: 12px;
+  font-weight: 800;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -120,17 +146,18 @@ const levelClass = (level?: string) => `level level-${level || 'C'}`
 
 .level {
   min-width: 26px;
-  padding: 3px 7px;
-  border-radius: 6px;
+  padding: 4px 8px;
+  border-radius: 999px;
   text-align: center;
   font-size: 12px;
   font-weight: 900;
+  box-shadow: inset 0 0 0 1px oklch(1 0 0 / 0.5);
 }
 
 .closed-badge {
   flex: 0 0 auto;
-  padding: 3px 7px;
-  border-radius: 6px;
+  padding: 4px 8px;
+  border-radius: 999px;
   color: oklch(0.38 0.1 150);
   background: oklch(0.94 0.055 150);
   font-size: 12px;
@@ -142,4 +169,61 @@ const levelClass = (level?: string) => `level level-${level || 'C'}`
 .level-B { color: oklch(0.34 0.11 160); background: oklch(0.93 0.045 160); }
 .level-C { color: oklch(0.42 0.025 245); background: oklch(0.92 0.012 245); }
 .level-D { color: oklch(0.42 0.04 25); background: oklch(0.92 0.025 25); }
+
+@media (min-width: 760px) {
+  .customer-header {
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 0.55fr);
+    align-items: center;
+    margin: var(--page-gap) var(--page-gap) 0;
+    padding: 18px 20px;
+  }
+
+  .meta-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (min-width: 1180px) {
+  .customer-header {
+    margin: 0 0 12px;
+    padding: 14px 16px;
+    border-color: #d9e1eb;
+    border-radius: 7px;
+    background: #ffffff;
+    box-shadow: 0 1px 2px rgb(15 23 42 / 5%);
+    backdrop-filter: none;
+  }
+
+  .customer-header::before {
+    content: none;
+  }
+
+  .identity-row {
+    gap: 12px;
+  }
+
+  .avatar {
+    width: 46px;
+    height: 46px;
+    border-radius: 10px;
+    box-shadow: none;
+  }
+
+  .avatar img {
+    border-radius: 8px;
+  }
+
+  .name-row strong {
+    font-size: 20px;
+  }
+
+  .meta-row span {
+    min-height: 40px;
+    display: grid;
+    align-items: center;
+    padding-inline: 12px;
+    border-radius: 7px;
+    background: #f8fafc;
+  }
+}
 </style>

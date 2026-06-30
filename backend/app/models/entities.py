@@ -135,12 +135,13 @@ class GlobalSalesInsight(Base):
 class PersonaSource(Base):
     __tablename__ = "persona_sources"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     customer_id: Mapped[int] = mapped_column(ForeignKey("customers.id"), nullable=False, index=True)
     sales_userid: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     external_userid: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     source_type: Mapped[str] = mapped_column(String(32), nullable=False, default="manual")
     title: Mapped[str | None] = mapped_column(String(128))
+    source_url: Mapped[str | None] = mapped_column(String(500))
     content: Mapped[str] = mapped_column(Text, nullable=False)
     persona_summary: Mapped[str | None] = mapped_column(Text)
 

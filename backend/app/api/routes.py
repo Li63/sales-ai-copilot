@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import io
+import re
 import zipfile
 from datetime import datetime, timedelta
 from typing import Annotated
@@ -28,6 +29,7 @@ from app.models import (
 )
 from app.services.auth_service import AuthService
 from app.services.customer_service import CustomerService
+from app.services.douyin_resolver import DouyinLinkResolver, format_douyin_link_evidence
 from app.services.llm_service import LLMService
 from app.services.sales_knowledge import SalesKnowledgeService
 from app.services.transcript_parser import parse_transcript
@@ -98,6 +100,7 @@ class PersonaSourceRequest(BaseModel):
     content: str
     source_type: str = "manual"
     title: str | None = None
+    source_url: str | None = None
 
 
 class IpContentRequest(BaseModel):
@@ -141,6 +144,9 @@ MAX_FILE_BYTES = 12 * 1024 * 1024
 SUPPORTED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 SUPPORTED_TEXT_TYPES = {"text/plain", "text/markdown", "text/csv", "application/json"}
 SUPPORTED_DOCUMENT_SUFFIXES = {".pdf", ".docx", ".doc"}
+PERSONA_SOURCE_TYPES = {"douyin_profile", "douyin_content", "qichacha", "website", "manual"}
+URL_PATTERN = re.compile(r"https?://[^\s，。；;）)]+")
+DOUYIN_URL_PATTERN = re.compile(r"https?://(?:v\.douyin\.com|www\.douyin\.com|www\.iesdouyin\.com|iesdouyin\.com)/[^\s，。；;）)]+")
 
 
 def _optional_current_user(
@@ -825,17 +831,109 @@ async def persona_source_add(
 ):
     active_sales_userid = current_user.sales_userid if current_user else body.sales_userid
     customer = CustomerService(db).get_or_create_customer(active_sales_userid, body.external_userid)
-    content = body.content.strip()[:5000]
+    title, content, source_type, source_url = _prepare_persona_source_input(
+        body.title,
+        body.content,
+        body.source_type,
+        body.source_url,
+    )
+    content, source_url = await _enrich_douyin_link_evidence(content, source_type, source_url)
     if not content:
-        return {"code": 1, "message": "请填写客户资料内容", "data": {}}
+        return {"code": 1, "message": "请填写客户资料内容，或至少提供一个可识别的资料链接", "data": {}}
     source = PersonaSource(
         customer_id=customer.id,
         sales_userid=active_sales_userid,
         external_userid=body.external_userid,
-        source_type=body.source_type[:32] or "manual",
-        title=(body.title or "客户公开资料")[:128],
+        source_type=source_type,
+        title=title,
+        source_url=source_url or None,
         content=content,
-        persona_summary=await llm.analyze_persona_source(content, _customer_payload(customer, db)),
+        persona_summary=await llm.analyze_persona_source(content, _customer_payload(customer, db), source_type, source_url),
+    )
+    db.add(source)
+    db.flush()
+    _refresh_customer_persona(db, customer)
+    db.commit()
+    db.refresh(source)
+    return success(_persona_source_payload(source))
+
+
+@router.post("/persona/intelligence/analyze")
+async def persona_intelligence_analyze(
+    db: Annotated[Session, Depends(get_db)],
+    llm: Annotated[LLMService, Depends(get_llm_service)],
+    current_user: Annotated[User | None, Depends(_optional_current_user)] = None,
+    sales_userid: Annotated[str, Form()] = "",
+    external_userid: Annotated[str, Form()] = "",
+    source_type: Annotated[str, Form()] = "manual",
+    source_url: Annotated[str, Form()] = "",
+    title: Annotated[str | None, Form()] = None,
+    content: Annotated[str, Form()] = "",
+    files: Annotated[list[UploadFile] | None, File()] = None,
+):
+    active_sales_userid = current_user.sales_userid if current_user else sales_userid
+    if not active_sales_userid or not external_userid:
+        return {"code": 1, "message": "客户参数缺失", "data": {}}
+    customer = CustomerService(db).get_or_create_customer(active_sales_userid, external_userid)
+    images: list[dict[str, str]] = []
+    text_blocks: list[str] = [content.strip()] if content.strip() else []
+    if files:
+        for file in files[:8]:
+            uploaded = await file.read()
+            if len(uploaded) > MAX_FILE_BYTES:
+                return {"code": 1, "message": f"{file.filename or '文件'} 不能超过 12MB", "data": {}}
+            content_type = file.content_type or "application/octet-stream"
+            filename = file.filename or "file"
+            suffix = _file_suffix(filename)
+            if content_type in SUPPORTED_IMAGE_TYPES:
+                if len(uploaded) > MAX_IMAGE_BYTES:
+                    return {"code": 1, "message": "单张图片不能超过 5MB", "data": {}}
+                images.append({"filename": filename, "content_type": content_type, "base64": base64.b64encode(uploaded).decode("ascii")})
+                continue
+            if suffix == ".pdf":
+                text_blocks.append(_extract_pdf_text(uploaded, filename))
+                continue
+            if suffix == ".docx":
+                text_blocks.append(_extract_docx_text(uploaded, filename))
+                continue
+            if suffix == ".doc":
+                return {"code": 1, "message": "暂不支持旧版 .doc，请另存为 .docx 或 PDF 后上传", "data": {}}
+            if content_type in SUPPORTED_TEXT_TYPES or suffix in {".txt", ".md", ".csv", ".json"}:
+                text_blocks.append(f"# {filename}\n{_decode_text(uploaded)}")
+                continue
+            return {"code": 1, "message": f"不支持的文件类型：{filename}", "data": {}}
+    raw_context = "\n\n".join(block.strip() for block in text_blocks if block.strip())
+    prepared_title, prepared_content, inferred_type, cleaned_url = _prepare_persona_source_input(title, raw_context, source_type, source_url)
+    prepared_content, cleaned_url = await _enrich_douyin_link_evidence(prepared_content, inferred_type, cleaned_url)
+    if images and not prepared_content:
+        prepared_content = "用户上传了客户截图，请基于图片直接识别截图类型、平台、账号、内容、评论、企业线索和销售假设。"
+    if not images and not prepared_content:
+        return {"code": 1, "message": "请上传截图/文件，或填写客户资料内容", "data": {}}
+    if images:
+        persona_summary = await llm.analyze_persona_images(
+            images,
+            customer_profile=_customer_payload(customer, db),
+            source_type=inferred_type,
+            source_url=cleaned_url,
+            text_context=prepared_content,
+        )
+        stored_content = (
+            f"{prepared_content}\n\n"
+            f"多模态截图分析：本次直接分析 {len(images)} 张截图，未将图片仅降级为 OCR 文本。\n"
+            f"{persona_summary}"
+        ).strip()
+    else:
+        persona_summary = await llm.analyze_persona_source(prepared_content, _customer_payload(customer, db), inferred_type, cleaned_url)
+        stored_content = prepared_content
+    source = PersonaSource(
+        customer_id=customer.id,
+        sales_userid=active_sales_userid,
+        external_userid=external_userid,
+        source_type=inferred_type,
+        title=prepared_title,
+        source_url=cleaned_url or None,
+        content=stored_content[:7000],
+        persona_summary=persona_summary,
     )
     db.add(source)
     db.flush()
@@ -1296,7 +1394,12 @@ def _persona_source_payloads(db: Session, sales_userid: str, external_userid: st
 
 def _persona_sources(db: Session, sales_userid: str, external_userid: str) -> list[dict]:
     return [
-        {"source_type": item["source_type"], "title": item["title"], "persona_summary": item["persona_summary"]}
+        {
+            "source_type": item["source_type"],
+            "title": item["title"],
+            "source_url": item["source_url"],
+            "persona_summary": item["persona_summary"],
+        }
         for item in _persona_source_payloads(db, sales_userid, external_userid, limit=8)
     ]
 
@@ -1316,9 +1419,15 @@ def _refresh_customer_persona(db: Session, customer: Customer) -> None:
     latest = records[0]
     profile = [
         f"最近更新：{latest.created_at.date().isoformat()}，累计资料 {len(records)} 条。",
-        "持续判断：客户人设会随着朋友圈、自媒体、聊天截图和公开资料持续补充，不以单次资料下结论。",
+        "销售假设：以下判断只来自已上传资料，用于优化开场、跟进角度和风险提醒，不等同于已验证事实。",
+        "持续判断：客户人设会随着朋友圈、抖音内容、企查查资料、聊天截图和公开资料持续补充，不以单次资料下结论。",
     ]
-    profile.extend(f"- {summary[:180]}" for summary in summaries[:8] if summary)
+    for record, summary in zip(records[:8], summaries[:8], strict=False):
+        if not summary:
+            continue
+        label = _persona_source_type_label(record.source_type)
+        title = record.title or "客户公开资料"
+        profile.append(f"- {label}｜{title}：{summary[:180]}")
     customer.persona_profile = "\n".join(profile)[:3000]
     customer.persona_updated_at = datetime.utcnow()
 
@@ -1328,10 +1437,135 @@ def _persona_source_payload(item: PersonaSource) -> dict:
         "id": item.id,
         "source_type": item.source_type,
         "title": item.title or "",
+        "source_url": item.source_url or "",
         "content": item.content,
         "persona_summary": item.persona_summary or "",
         "created_at": item.created_at.isoformat(),
     }
+
+
+def _normalize_persona_source_type(source_type: str) -> str:
+    value = (source_type or "").strip()
+    return value if value in PERSONA_SOURCE_TYPES else "manual"
+
+
+def _prepare_persona_source_input(title: str | None, content: str, source_type: str, source_url: str | None) -> tuple[str, str, str, str]:
+    raw_content = (content or "").strip()
+    cleaned_url = _clean_source_url(source_url or _extract_first_url(raw_content))
+    normalized_type = _normalize_persona_source_type(source_type)
+    inferred_type = _infer_persona_source_type(normalized_type, cleaned_url, raw_content)
+    prepared_title = (title or _default_persona_title(inferred_type)).strip()[:128] or "客户公开资料"
+    prepared_content = raw_content
+    if inferred_type in {"douyin_profile", "douyin_content"}:
+        prepared_content = _format_douyin_evidence(raw_content, cleaned_url)
+    elif not prepared_content and cleaned_url:
+        prepared_content = (
+            f"来源链接：{cleaned_url}\n"
+            "证据状态：用户只提供了链接，系统尚未抓取完整页面；以下只能作为待验证销售假设。\n"
+            "补充建议：请继续上传页面截图、评论区截图、官网摘要或企查查摘要，让企业判断更完整。"
+        )
+    return prepared_title, prepared_content[:7000], inferred_type, cleaned_url
+
+
+async def _enrich_douyin_link_evidence(content: str, source_type: str, source_url: str) -> tuple[str, str]:
+    if source_type not in {"douyin_profile", "douyin_content"} or not source_url:
+        return content, source_url
+    evidence = await _resolve_douyin_link(source_url)
+    formatted = format_douyin_link_evidence(evidence)
+    if not formatted:
+        return content, source_url
+    final_url = _clean_source_url(evidence.get("final_url") or source_url)
+    enriched = "\n\n".join(block for block in [content.strip(), formatted.strip()] if block)
+    return enriched[:7000], final_url or source_url
+
+
+async def _resolve_douyin_link(url: str) -> dict:
+    evidence = await DouyinLinkResolver().resolve(url)
+    return evidence.to_dict()
+
+
+def _extract_first_url(text: str) -> str:
+    matched = URL_PATTERN.search(text or "")
+    return _clean_source_url(matched.group(0)) if matched else ""
+
+
+def _clean_source_url(url: str | None) -> str:
+    return (url or "").strip().rstrip("，。；;、,.!?！？）)")
+
+
+def _infer_persona_source_type(source_type: str, source_url: str, content: str) -> str:
+    if source_type != "manual":
+        return source_type
+    haystack = f"{source_url}\n{content}".lower()
+    if DOUYIN_URL_PATTERN.search(haystack) or "复制打开抖音" in content or "抖音" in content:
+        if "主页" in content and "作品" not in content and "#" not in content:
+            return "douyin_profile"
+        return "douyin_content"
+    if "qcc.com" in haystack or "企查查" in content or "天眼查" in content:
+        return "qichacha"
+    if source_url:
+        return "website"
+    return "manual"
+
+
+def _format_douyin_evidence(content: str, source_url: str) -> str:
+    text = (content or "").strip()
+    subject = ""
+    account = ""
+    subject_match = re.search(r"看看【(.+?)】", text)
+    if subject_match:
+        subject = subject_match.group(1).strip()
+        account = re.sub(r"的(作品|主页|视频)$", "", subject).strip()
+    text_without_url = text.replace(source_url, "") if source_url else text
+    after_subject = text_without_url.split("】", 1)[1] if "】" in text_without_url else text_without_url
+    work_clue = re.split(r"#|https?://", after_subject, maxsplit=1)[0].strip(" ，。:：")
+    tags = []
+    for tag in re.findall(r"#\s*([^#\s，。\.…]+)", text):
+        clean_tag = tag.strip(" ，。:：#.")
+        if clean_tag and clean_tag not in tags:
+            tags.append(clean_tag)
+    lines = [
+        "平台：抖音",
+        "资料类型：抖音分享文案/短链，系统尚未抓取完整视频页面。",
+        "证据状态：只能基于用户粘贴的分享文案、链接、标题、标签做销售假设，不能当成已抓取完整页面。",
+    ]
+    if source_url:
+        lines.append(f"来源链接：{source_url}")
+    if account:
+        lines.append(f"账号：{account}")
+    elif subject:
+        lines.append(f"账号/主体线索：{subject}")
+    if work_clue:
+        lines.append(f"作品线索：{work_clue}")
+    if tags:
+        lines.append(f"标签：{'、'.join(tags)}")
+    if text:
+        lines.append(f"原始分享文本：{text[:1000]}")
+    else:
+        lines.append("用户只提供了链接，建议继续上传抖音主页截图、视频截图、评论区截图或口播摘要，才能分析账号定位、客户性格和真实互动痛点。")
+    return "\n".join(lines)
+
+
+def _default_persona_title(source_type: str) -> str:
+    titles = {
+        "douyin_profile": "抖音主页情报",
+        "douyin_content": "抖音内容情报",
+        "qichacha": "企查查企业情报",
+        "website": "官网公开情报",
+        "manual": "销售观察情报",
+    }
+    return titles.get(source_type, "客户公开资料")
+
+
+def _persona_source_type_label(source_type: str) -> str:
+    labels = {
+        "douyin_profile": "抖音主页",
+        "douyin_content": "抖音内容",
+        "qichacha": "企查查资料",
+        "website": "网站资料",
+        "manual": "手动观察",
+    }
+    return labels.get(source_type, "手动观察")
 
 
 def _summarize_persona_source(content: str) -> str:

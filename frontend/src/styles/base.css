@@ -1,24 +1,38 @@
 :root {
   color-scheme: light;
-  --bg: oklch(0.975 0.008 245);
-  --bg-deep: oklch(0.27 0.04 235);
-  --surface: oklch(1 0 0);
-  --surface-soft: oklch(0.965 0.01 235);
-  --surface-raised: oklch(0.99 0.004 235);
-  --ink: oklch(0.22 0.025 245);
-  --muted: oklch(0.48 0.022 245);
-  --subtle: oklch(0.64 0.018 245);
-  --line: oklch(0.89 0.012 245);
-  --brand: oklch(0.46 0.115 175);
-  --brand-strong: oklch(0.33 0.11 175);
-  --brand-soft: oklch(0.94 0.045 175);
-  --accent: oklch(0.56 0.13 235);
-  --accent-soft: oklch(0.94 0.035 235);
-  --warn: oklch(0.66 0.14 70);
-  --danger: oklch(0.55 0.17 25);
-  --shadow: 0 14px 36px oklch(0.18 0.025 245 / 0.1);
-  --shadow-soft: 0 8px 24px oklch(0.18 0.025 245 / 0.07);
-  font-family: Inter, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --bg: oklch(0.972 0.012 226);
+  --bg-wash: oklch(0.94 0.035 178);
+  --bg-deep: oklch(0.2 0.055 233);
+  --surface: oklch(0.996 0.004 96);
+  --surface-soft: oklch(0.958 0.014 102);
+  --surface-raised: oklch(0.99 0.007 105);
+  --surface-glass: oklch(1 0.004 95 / 0.78);
+  --ink: oklch(0.18 0.05 232);
+  --muted: oklch(0.47 0.035 229);
+  --subtle: oklch(0.64 0.027 220);
+  --line: oklch(0.88 0.018 106);
+  --line-strong: oklch(0.76 0.056 178);
+  --brand: oklch(0.55 0.12 176);
+  --brand-strong: oklch(0.31 0.1 190);
+  --brand-soft: oklch(0.92 0.054 174);
+  --accent: oklch(0.72 0.13 82);
+  --accent-strong: oklch(0.49 0.118 72);
+  --accent-soft: oklch(0.95 0.055 85);
+  --warn: oklch(0.68 0.135 70);
+  --danger: oklch(0.57 0.18 26);
+  --info: oklch(0.58 0.13 238);
+  --shell-max: 1480px;
+  --rail-width: 104px;
+  --page-gap: 18px;
+  --radius-xl: 30px;
+  --radius-lg: 24px;
+  --radius-md: 18px;
+  --radius-sm: 13px;
+  --shadow: 0 30px 90px oklch(0.16 0.046 235 / 0.16);
+  --shadow-soft: 0 16px 42px oklch(0.16 0.046 235 / 0.09);
+  --shadow-tiny: 0 8px 20px oklch(0.16 0.046 235 / 0.07);
+  --shadow-glow: 0 24px 70px oklch(0.48 0.11 180 / 0.18);
+  font-family: "HarmonyOS Sans SC", "MiSans", "Source Han Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 
 * {
@@ -28,6 +42,8 @@
 html {
   min-height: 100%;
   background: var(--bg);
+  text-rendering: geometricPrecision;
+  scroll-behavior: smooth;
 }
 
 body {
@@ -35,8 +51,31 @@ body {
   min-height: 100vh;
   color: var(--ink);
   background:
-    linear-gradient(180deg, oklch(0.94 0.025 190) 0, transparent 260px),
+    radial-gradient(circle at 12% -4%, oklch(0.86 0.08 178 / 0.78) 0, transparent 330px),
+    radial-gradient(circle at 88% 2%, oklch(0.91 0.075 82 / 0.7) 0, transparent 310px),
+    radial-gradient(circle at 78% 72%, oklch(0.78 0.08 238 / 0.18) 0, transparent 420px),
+    linear-gradient(135deg, oklch(0.985 0.006 100) 0, oklch(0.955 0.02 184) 42%, oklch(0.976 0.012 98) 100%),
     var(--bg);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(oklch(0.26 0.035 230 / 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, oklch(0.26 0.035 230 / 0.035) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: linear-gradient(180deg, black, transparent 74%);
+  z-index: -1;
+}
+
+::selection {
+  color: white;
+  background: var(--brand-strong);
 }
 
 button,
@@ -47,33 +86,46 @@ textarea {
 
 button {
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 input,
 textarea {
   outline: none;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, transform 0.18s ease;
 }
 
 input:focus,
 textarea:focus {
   border-color: var(--brand);
-  box-shadow: 0 0 0 3px oklch(0.84 0.06 175 / 0.35);
+  background: white;
+  box-shadow: 0 0 0 4px oklch(0.81 0.065 175 / 0.3), var(--shadow-tiny);
+}
+
+button:focus-visible,
+select:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid oklch(0.75 0.095 174 / 0.42);
+  outline-offset: 2px;
 }
 
 .van-tabs__wrap {
-  height: 46px;
-  border-bottom: 1px solid var(--line);
-  background: var(--surface);
+  height: 50px;
+  border-bottom: 0;
+  background: transparent;
 }
 
 .van-tabs__nav {
-  background: var(--surface);
+  gap: 6px;
+  padding: 6px 8px;
+  background: transparent;
 }
 
 .van-tab {
   color: var(--muted);
   font-size: 13px;
+  font-weight: 800;
 }
 
 .van-tab--active {
@@ -82,13 +134,19 @@ textarea:focus {
 }
 
 .van-tabs__line {
-  height: 3px;
+  height: 4px;
   border-radius: 999px;
-  background: var(--brand);
+  background: linear-gradient(90deg, var(--brand), var(--accent));
 }
 
 .van-pull-refresh {
   overflow: visible;
+}
+
+@media (min-width: 1180px) {
+  :root {
+    --page-gap: 22px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

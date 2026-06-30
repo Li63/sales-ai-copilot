@@ -127,3 +127,107 @@ async def test_llm_service_generates_persona_analysis_for_sales():
     assert "扩团队" in result
     assert "跟进角度" in result
     assert "销售提醒" in result
+
+
+@pytest.mark.asyncio
+async def test_llm_persona_payload_includes_source_type_and_url():
+    captured = {}
+
+    async def ok_client(payload):
+        captured.update(payload)
+        return {
+            "choices": [
+                {
+                    "message": {
+                        "content": '{"summary":"客户在抖音强调交付案例。","business_clues":"正在用内容获客。","content_positioning":"老板IP加案例拆解。","communication_style":"喜欢直接看案例。","decision_logic":"先看可信证据，再谈合作。","follow_angle":"用同类案例开场。","risk_warning":"不要夸大粉丝和转化。","sales_tip":"先问最近内容获客卡点。"}'
+                    }
+                }
+            ]
+        }
+
+    service = LLMService(api_key="x", base_url="https://example.test", model="deepseek-chat", http_client=ok_client)
+
+    result = await service.analyze_persona_source(
+        "抖音主页内容多为案例拆解。",
+        customer_profile={"nickname": "王总"},
+        source_type="douyin_profile",
+        source_url="https://www.douyin.com/user/example",
+    )
+
+    user_payload = captured["messages"][1]["content"]
+    assert "douyin_profile" in user_payload
+    assert "https://www.douyin.com/user/example" in user_payload
+    assert "经营线索" in result
+    assert "内容定位" in result
+    assert "决策逻辑" in result
+
+
+@pytest.mark.asyncio
+async def test_llm_persona_formats_enterprise_battle_fields():
+    async def ok_client(payload):
+        return {
+            "choices": [
+                {
+                    "message": {
+                        "content": '{"summary":"客户是食品机械设备厂家。","enterprise_positioning":"面向果蔬加工客户销售切条切片设备。","strength_evidence":"以设备实拍、工厂身份和细分产品标签建立可信度。","purchase_motivation":"可能更关注获客线索、设备询盘和经销合作。","deal_opportunity":"可从萝卜切条机细分场景切入，聊批量客户需求。","customer_pain":"需要证明设备稳定、效率和售后能力。","follow_strategy":"先围绕视频里的具体设备场景提问，再补同行案例。","icebreaker":"我看到您在发萝卜切条机这类细分设备，想请教下现在客户更关心效率还是售后稳定？"}'
+                    }
+                }
+            ]
+        }
+
+    service = LLMService(api_key="x", base_url="https://example.test", model="deepseek-chat", http_client=ok_client)
+
+    result = await service.analyze_persona_source(
+        "平台：抖音\n账号：金林食品机械设备厂家\n作品线索：瓜果蔬菜萝卜切条机\n标签：萝卜切条机、果蔬推条机",
+        source_type="douyin_content",
+        source_url="https://v.douyin.com/VhrrmUHw3SM/",
+    )
+
+    assert "企业定位：面向果蔬加工客户销售切条切片设备。" in result
+    assert "实力证据：以设备实拍、工厂身份和细分产品标签建立可信度。" in result
+    assert "采购动机：可能更关注获客线索、设备询盘和经销合作。" in result
+    assert "破冰话术：我看到您在发萝卜切条机这类细分设备" in result
+
+
+@pytest.mark.asyncio
+async def test_llm_service_analyzes_persona_images_with_context():
+    captured = {}
+
+    async def ok_client(payload):
+        captured.update(payload)
+        return {
+            "choices": [
+                {
+                    "message": {
+                        "content": '{"summary":"截图显示客户在抖音发布食品机械设备内容。","screenshot_type":"抖音作品截图","enterprise_positioning":"食品机械设备厂家，面向果蔬加工客户。","strength_evidence":"有设备实拍和细分产品标签，但企业规模仍需企查查验证。","content_positioning":"用具体机器场景获取精准询盘。","purchase_motivation":"可能关注获客线索和经销合作。","deal_opportunity":"围绕切条机细分场景切入。","customer_pain":"需要证明设备效率、稳定性和售后。","follow_strategy":"先问近期询盘客户更关注效率还是售后。","icebreaker":"看到您在发萝卜切条机，想请教下现在客户更关心效率还是售后稳定？"}'
+                    }
+                }
+            ]
+        }
+
+    service = LLMService(
+        api_key="x",
+        base_url="https://example.test",
+        model="text-model",
+        vision_api_key="vx",
+        vision_base_url="https://vision.example.test",
+        vision_model="vision-model",
+        vision_http_client=ok_client,
+    )
+
+    result = await service.analyze_persona_images(
+        [{"filename": "douyin.png", "content_type": "image/png", "base64": "ZmFrZQ=="}],
+        customer_profile={"nickname": "客户A"},
+        source_type="douyin_content",
+        source_url="https://v.douyin.com/VhrrmUHw3SM/",
+        text_context="销售补充：这是客户发的萝卜切条机作品截图。",
+    )
+
+    assert captured["model"] == "vision-model"
+    assert captured["messages"][0]["content"][1]["type"] == "image_url"
+    prompt_text = captured["messages"][0]["content"][0]["text"]
+    assert "截图类型" in prompt_text
+    assert "销售补充：这是客户发的萝卜切条机作品截图。" in prompt_text
+    assert "企业定位：食品机械设备厂家" in result
+    assert "截图类型：抖音作品截图" in result
+    assert "破冰话术：看到您在发萝卜切条机" in result

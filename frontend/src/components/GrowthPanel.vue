@@ -83,54 +83,62 @@ function submitIp() {
 <style scoped>
 .ip-builder {
   display: grid;
-  gap: 12px;
-  padding: 12px;
+  gap: 14px;
+  padding: 14px;
 }
 
 .hero,
 .panel,
 .ip-card,
 .empty {
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  border: 1px solid oklch(0.87 0.021 105 / 0.86);
+  border-radius: var(--radius-md);
   box-shadow: var(--shadow-soft);
 }
 
 .hero {
-  padding: 15px;
-  color: white;
-  background: linear-gradient(135deg, oklch(0.28 0.045 220), oklch(0.46 0.09 150));
+  position: relative;
+  overflow: hidden;
+  padding: 18px;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 90% 0%, oklch(0.9 0.09 82 / 0.76), transparent 160px),
+    linear-gradient(135deg, oklch(1 0.004 95), oklch(0.92 0.052 171));
 }
 
 .hero span {
-  color: oklch(0.86 0.06 155);
-  font-size: 12px;
+  color: var(--brand-strong);
+  font-size: 11px;
   font-weight: 900;
+  letter-spacing: 0.04em;
 }
 
 .hero strong {
   display: block;
   margin-top: 5px;
-  font-size: 20px;
+  font-size: 22px;
+  letter-spacing: -0.04em;
 }
 
 .hero p {
   margin: 7px 0 0;
-  color: oklch(0.94 0.018 170);
+  color: var(--muted);
   font-size: 13px;
   line-height: 1.55;
 }
 
 .panel {
   display: grid;
-  gap: 10px;
-  padding: 14px;
+  gap: 12px;
+  padding: 15px;
   background: var(--surface);
 }
 
 .daily {
   border-color: oklch(0.82 0.045 175);
-  background: linear-gradient(180deg, var(--brand-soft), white 84px);
+  background:
+    radial-gradient(circle at 100% 0%, oklch(0.9 0.08 84 / 0.62), transparent 150px),
+    linear-gradient(180deg, var(--brand-soft), white 96px);
 }
 
 .panel-head,
@@ -143,7 +151,8 @@ function submitIp() {
 .panel-head strong,
 .ip-card strong {
   color: var(--ink);
-  font-size: 15px;
+  font-size: 16px;
+  letter-spacing: -0.02em;
 }
 
 .panel-head span,
@@ -158,9 +167,9 @@ function submitIp() {
 .card-actions button {
   min-height: 30px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 14px;
   color: white;
-  background: var(--brand);
+  background: linear-gradient(135deg, var(--brand-strong), var(--brand));
   font-size: 12px;
   font-weight: 900;
 }
@@ -184,10 +193,10 @@ function submitIp() {
 
 .channel-switch button {
   min-height: 36px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  border: 1px solid oklch(0.86 0.021 105);
+  border-radius: 14px;
   color: var(--muted);
-  background: white;
+  background: oklch(1 0.004 95 / 0.8);
   font-weight: 800;
 }
 
@@ -199,20 +208,22 @@ function submitIp() {
 
 input {
   width: 100%;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 10px;
+  border: 1px solid oklch(0.86 0.021 105);
+  border-radius: 14px;
+  padding: 11px 12px;
   color: var(--ink);
-  background: var(--surface-raised);
+  background: oklch(1 0.004 95 / 0.78);
   font-size: 13px;
 }
 
 .primary {
   height: 39px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 14px;
   color: white;
-  background: var(--brand);
+  background:
+    radial-gradient(circle at 88% 8%, var(--accent), transparent 44px),
+    linear-gradient(135deg, var(--brand-strong), var(--brand));
   font-weight: 900;
 }
 
@@ -224,7 +235,7 @@ input {
 .ip-card {
   display: grid;
   gap: 9px;
-  padding: 12px;
+  padding: 14px;
   background: white;
 }
 
